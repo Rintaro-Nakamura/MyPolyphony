@@ -1,0 +1,15 @@
+{
+  "format": "my-polyphony-dialogue",
+  "version": 1,
+  "exportedAt": "2026-08-06T12:00:00.000Z",
+  "messages": [
+    {
+      "role": "self",
+      "text": "読み込んだ自分の声"
+    },
+    {
+      "role": "other",
+      "text": "読み込んだ相手の声\n二行目"
+    }
+  ]
+}
