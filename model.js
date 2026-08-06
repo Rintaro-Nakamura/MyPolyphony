@@ -99,6 +99,17 @@ function updateDraft(state, draft) {
   };
 }
 
+function toggleNextRole(state) {
+  if (!state || typeof state !== "object" || !isRole(state.nextRole)) {
+    throw new TypeError("次の話者が正しくありません。");
+  }
+
+  return {
+    ...state,
+    nextRole: oppositeRole(state.nextRole),
+  };
+}
+
 function editMessage(state, id, text) {
   assertNonEmptyText(text);
   let found = false;
@@ -289,6 +300,7 @@ globalThis.MyPolyphonyModel = Object.freeze({
   nextRoleFromMessages,
   commitDraft,
   updateDraft,
+  toggleNextRole,
   editMessage,
   deleteMessage,
   serializeStoredState,

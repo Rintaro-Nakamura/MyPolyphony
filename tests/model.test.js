@@ -16,6 +16,7 @@ const {
   serializeDialogue,
   serializePlainText,
   serializeStoredState,
+  toggleNextRole,
   updateDraft,
 } = globalThis.MyPolyphonyModel;
 
@@ -40,6 +41,21 @@ test("発言を確定するたびに話者が交替する", () => {
   );
   assert.equal(state.nextRole, ROLE_SELF);
   assert.equal(state.draft, "");
+});
+
+test("次の話者を手動変更しても、発言後は自動で交替する", () => {
+  let state = createInitialState();
+  state = updateDraft(state, "最初の自分の声");
+  state = commitDraft(state, ids("m1"));
+  assert.equal(state.nextRole, ROLE_OTHER);
+
+  state = toggleNextRole(state);
+  assert.equal(state.nextRole, ROLE_SELF);
+
+  state = updateDraft(state, "続けて自分の声");
+  state = commitDraft(state, ids("m2"));
+  assert.deepEqual(state.messages.map(({ role }) => role), [ROLE_SELF, ROLE_SELF]);
+  assert.equal(state.nextRole, ROLE_OTHER);
 });
 
 test("編集は話者を変えず、削除後の次話者は最後の発言から決まる", () => {

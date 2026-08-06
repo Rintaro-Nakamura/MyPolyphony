@@ -36,3 +36,16 @@ test("開始の鍵括弧を残し、紹介を本文の後へ移している", as
   assert.equal(html.includes('id="desktopEmpty"'), true);
   assert.equal(html.includes("ここから、もう一人の自分との対話を始めましょう。"), true);
 });
+
+test("次の話者表示を送信ではない切替ボタンとして備えている", async () => {
+  const html = await readFile(new URL("../index.html", import.meta.url), "utf8");
+
+  assert.match(
+    html,
+    /<button\s+id="desktopRoleLabel"[\s\S]*?type="button"[\s\S]*?>次は 自分<\/button>/,
+  );
+  assert.match(
+    html,
+    /<button\s+id="mobileRoleLabel"[\s\S]*?type="button"[\s\S]*?>次は自分<\/button>/,
+  );
+});

@@ -585,11 +585,22 @@
         left: 1rem;
         padding: 0.15rem 0.62rem;
         color: white;
+        border: 0;
         background: var(--ink);
         border-radius: 999px;
         font-size: 0.65rem;
         font-weight: 800;
         letter-spacing: 0.04em;
+        cursor: pointer;
+        transition: filter 150ms ease, transform 150ms ease;
+      }
+
+      .role-tag:hover {
+        filter: brightness(1.14);
+      }
+
+      .role-tag:active {
+        transform: translateY(1px);
       }
       
       .desktop-composer[data-role="other"] .role-tag {
@@ -742,9 +753,18 @@
         padding: 0.25rem 0.5rem;
         color: #dfe2ff;
         border: 1px solid rgba(255, 255, 255, 0.18);
+        background: transparent;
         border-radius: 999px;
         font-size: 0.62rem;
         font-weight: 800;
+        cursor: pointer;
+        transition: color 150ms ease, border-color 150ms ease, background 150ms ease;
+      }
+
+      .phone-header__turn:hover {
+        color: white;
+        border-color: rgba(255, 255, 255, 0.42);
+        background: rgba(255, 255, 255, 0.08);
       }
       
       .mobile-feed {
@@ -1289,7 +1309,12 @@
           <div id="desktopMessages" class="desktop-messages" aria-live="polite"></div>
 
           <form id="desktopComposer" class="desktop-composer" data-role="self">
-            <span id="desktopRoleLabel" class="role-tag">次は 自分</span>
+            <button
+              id="desktopRoleLabel"
+              class="role-tag"
+              type="button"
+              aria-label="次の話者は自分です。クリックすると相手に切り替わります。"
+            >次は 自分</button>
             <div class="quote-input">
               <span class="quote-input__mark" aria-hidden="true">「</span>
               <label class="visually-hidden" for="desktopDraft">次の発言</label>
@@ -1317,7 +1342,12 @@
               <h2>ふたつの声</h2>
               <p>自分のなかの対話篇</p>
             </div>
-            <span id="mobileRoleLabel" class="phone-header__turn">次は自分</span>
+            <button
+              id="mobileRoleLabel"
+              class="phone-header__turn"
+              type="button"
+              aria-label="次の話者は自分です。クリックすると相手に切り替わります。"
+            >次は自分</button>
           </header>
 
           <div id="mobileFeed" class="mobile-feed">
@@ -1482,6 +1512,17 @@
         return {
           ...state,
           draft: normalizeText(draft),
+        };
+      }
+
+      function toggleNextRole(state) {
+        if (!state || typeof state !== "object" || !isRole(state.nextRole)) {
+          throw new TypeError("次の話者が正しくありません。");
+        }
+
+        return {
+          ...state,
+          nextRole: oppositeRole(state.nextRole),
         };
       }
       
@@ -1675,6 +1716,7 @@
         nextRoleFromMessages,
         commitDraft,
         updateDraft,
+        toggleNextRole,
         editMessage,
         deleteMessage,
         serializeStoredState,
@@ -1703,6 +1745,7 @@
         serializeDialogue,
         serializePlainText,
         serializeStoredState,
+        toggleNextRole,
         updateDraft,
       } = globalThis.MyPolyphonyModel;
       
@@ -1985,15 +2028,32 @@
       
       function renderComposer() {
         const label = roleLabel(state.nextRole);
+        const alternateLabel = roleLabel(state.nextRole === ROLE_SELF ? ROLE_OTHER : ROLE_SELF);
         elements.desktopRoleLabel.textContent = `次は ${label}`;
         elements.mobileRoleLabel.textContent = `次は${label}`;
         elements.mobileDraft.placeholder = `${label}として書く`;
+
+        [elements.desktopRoleLabel, elements.mobileRoleLabel].forEach((button) => {
+          button.setAttribute(
+            "aria-label",
+            `次の話者は${label}です。クリックすると${alternateLabel}に切り替わります。`,
+          );
+          button.title = `クリックで「次は${alternateLabel}」に切り替え`;
+        });
       
         [elements.desktopComposer, elements.mobileComposer].forEach((composer) => {
           composer.dataset.role = state.nextRole;
         });
       
         syncDraftInputs();
+      }
+
+      function handleRoleToggle() {
+        state = toggleNextRole(state);
+        persistNow();
+        renderComposer();
+        focusComposer();
+        announce(`次の話者を${roleLabel(state.nextRole)}に切り替えました。発言後は自動で交替します。`);
       }
       
       function renderAll({ focus = false, scroll = false } = {}) {
@@ -2243,6 +2303,7 @@
       
         elements.desktopDraft.addEventListener("input", handleDraftInput);
         elements.desktopDraft.addEventListener("keydown", handleDesktopKeydown);
+        elements.desktopRoleLabel.addEventListener("click", handleRoleToggle);
         elements.desktopComposer.addEventListener("submit", (event) => {
           event.preventDefault();
           commitCurrentDraft(elements.desktopDraft);
@@ -2250,6 +2311,7 @@
       
         elements.mobileDraft.addEventListener("input", handleDraftInput);
         elements.mobileDraft.addEventListener("keydown", handleMobileKeydown);
+        elements.mobileRoleLabel.addEventListener("click", handleRoleToggle);
         elements.mobileComposer.addEventListener("submit", (event) => {
           event.preventDefault();
           commitCurrentDraft(elements.mobileDraft);

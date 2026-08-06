@@ -14,6 +14,7 @@ const {
   serializeDialogue,
   serializePlainText,
   serializeStoredState,
+  toggleNextRole,
   updateDraft,
 } = globalThis.MyPolyphonyModel;
 
@@ -296,15 +297,32 @@ function renderMessages() {
 
 function renderComposer() {
   const label = roleLabel(state.nextRole);
+  const alternateLabel = roleLabel(state.nextRole === ROLE_SELF ? ROLE_OTHER : ROLE_SELF);
   elements.desktopRoleLabel.textContent = `次は ${label}`;
   elements.mobileRoleLabel.textContent = `次は${label}`;
   elements.mobileDraft.placeholder = `${label}として書く`;
+
+  [elements.desktopRoleLabel, elements.mobileRoleLabel].forEach((button) => {
+    button.setAttribute(
+      "aria-label",
+      `次の話者は${label}です。クリックすると${alternateLabel}に切り替わります。`,
+    );
+    button.title = `クリックで「次は${alternateLabel}」に切り替え`;
+  });
 
   [elements.desktopComposer, elements.mobileComposer].forEach((composer) => {
     composer.dataset.role = state.nextRole;
   });
 
   syncDraftInputs();
+}
+
+function handleRoleToggle() {
+  state = toggleNextRole(state);
+  persistNow();
+  renderComposer();
+  focusComposer();
+  announce(`次の話者を${roleLabel(state.nextRole)}に切り替えました。発言後は自動で交替します。`);
 }
 
 function renderAll({ focus = false, scroll = false } = {}) {
@@ -554,6 +572,7 @@ function bindEvents() {
 
   elements.desktopDraft.addEventListener("input", handleDraftInput);
   elements.desktopDraft.addEventListener("keydown", handleDesktopKeydown);
+  elements.desktopRoleLabel.addEventListener("click", handleRoleToggle);
   elements.desktopComposer.addEventListener("submit", (event) => {
     event.preventDefault();
     commitCurrentDraft(elements.desktopDraft);
@@ -561,6 +580,7 @@ function bindEvents() {
 
   elements.mobileDraft.addEventListener("input", handleDraftInput);
   elements.mobileDraft.addEventListener("keydown", handleMobileKeydown);
+  elements.mobileRoleLabel.addEventListener("click", handleRoleToggle);
   elements.mobileComposer.addEventListener("submit", (event) => {
     event.preventDefault();
     commitCurrentDraft(elements.mobileDraft);

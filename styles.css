@@ -573,11 +573,22 @@ textarea {
   left: 1rem;
   padding: 0.15rem 0.62rem;
   color: white;
+  border: 0;
   background: var(--ink);
   border-radius: 999px;
   font-size: 0.65rem;
   font-weight: 800;
   letter-spacing: 0.04em;
+  cursor: pointer;
+  transition: filter 150ms ease, transform 150ms ease;
+}
+
+.role-tag:hover {
+  filter: brightness(1.14);
+}
+
+.role-tag:active {
+  transform: translateY(1px);
 }
 
 .desktop-composer[data-role="other"] .role-tag {
@@ -730,9 +741,18 @@ kbd {
   padding: 0.25rem 0.5rem;
   color: #dfe2ff;
   border: 1px solid rgba(255, 255, 255, 0.18);
+  background: transparent;
   border-radius: 999px;
   font-size: 0.62rem;
   font-weight: 800;
+  cursor: pointer;
+  transition: color 150ms ease, border-color 150ms ease, background 150ms ease;
+}
+
+.phone-header__turn:hover {
+  color: white;
+  border-color: rgba(255, 255, 255, 0.42);
+  background: rgba(255, 255, 255, 0.08);
 }
 
 .mobile-feed {
