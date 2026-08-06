@@ -36,7 +36,6 @@ const elements = {
   desktopComposer: document.querySelector("#desktopComposer"),
   desktopDraft: document.querySelector("#desktopDraft"),
   desktopRoleLabel: document.querySelector("#desktopRoleLabel"),
-  paperDate: document.querySelector("#paperDate"),
   mobileView: document.querySelector("#mobileView"),
   mobileFeed: document.querySelector("#mobileFeed"),
   mobileMessages: document.querySelector("#mobileMessages"),
@@ -65,14 +64,6 @@ let storageWriteBlocked = false;
 
 function roleLabel(role) {
   return role === ROLE_SELF ? "自分" : "相手";
-}
-
-function formatJapaneseDate(date = new Date()) {
-  return new Intl.DateTimeFormat("ja-JP", {
-    year: "numeric",
-    month: "long",
-    day: "numeric",
-  }).format(date);
 }
 
 function loadInitialState() {
@@ -608,8 +599,6 @@ function bindEvents() {
   });
 }
 
-elements.paperDate.textContent = formatJapaneseDate();
-elements.paperDate.dateTime = new Date().toISOString().slice(0, 10);
 bindEvents();
 loadInitialState();
 renderAll();

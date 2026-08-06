@@ -442,41 +442,6 @@ textarea {
   background: rgba(221, 103, 66, 0.18);
 }
 
-.paper__header {
-  display: flex;
-  align-items: start;
-  justify-content: space-between;
-  padding-bottom: 1.7rem;
-  margin-bottom: 2.2rem;
-  border-bottom: 2px solid var(--ink);
-}
-
-.paper__header p,
-.paper__header h2,
-.paper__header time {
-  margin: 0;
-}
-
-.paper__header p {
-  color: var(--ink-soft);
-  font-size: 0.64rem;
-  font-weight: 800;
-  letter-spacing: 0.18em;
-}
-
-.paper__header h2 {
-  margin-top: 0.35rem;
-  font-family: var(--font-serif);
-  font-size: clamp(1.55rem, 3vw, 2.15rem);
-  font-weight: 500;
-}
-
-.paper__header time {
-  color: var(--ink-soft);
-  font-family: var(--font-serif);
-  font-size: 0.8rem;
-}
-
 .empty-state {
   display: flex;
   align-items: center;

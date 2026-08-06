@@ -453,42 +453,7 @@
         content: "";
         background: rgba(221, 103, 66, 0.18);
       }
-      
-      .paper__header {
-        display: flex;
-        align-items: start;
-        justify-content: space-between;
-        padding-bottom: 1.7rem;
-        margin-bottom: 2.2rem;
-        border-bottom: 2px solid var(--ink);
-      }
-      
-      .paper__header p,
-      .paper__header h2,
-      .paper__header time {
-        margin: 0;
-      }
-      
-      .paper__header p {
-        color: var(--ink-soft);
-        font-size: 0.64rem;
-        font-weight: 800;
-        letter-spacing: 0.18em;
-      }
-      
-      .paper__header h2 {
-        margin-top: 0.35rem;
-        font-family: var(--font-serif);
-        font-size: clamp(1.55rem, 3vw, 2.15rem);
-        font-weight: 500;
-      }
-      
-      .paper__header time {
-        color: var(--ink-soft);
-        font-family: var(--font-serif);
-        font-size: 0.8rem;
-      }
-      
+
       .empty-state {
         display: flex;
         align-items: center;
@@ -498,13 +463,13 @@
         font-family: var(--font-serif);
         text-align: center;
       }
-      
+
       .empty-state > span {
         color: rgba(92, 100, 199, 0.2);
         font-size: 6rem;
         line-height: 1;
       }
-      
+
       .empty-state p {
         max-width: 18rem;
         margin: 0 1rem;
@@ -1308,22 +1273,6 @@
     </div>
 
     <main id="workspace" class="page-shell">
-      <section class="intro" aria-labelledby="pageTitle">
-        <div>
-          <p class="eyebrow">Dialogue as a thinking tool</p>
-          <h1 id="pageTitle">声を分けると、<br />考えがほどける。</h1>
-        </div>
-        <div class="intro__note">
-          <p>
-            自分の声と、もう一つの声。交互に言葉を置きながら、まだ形のない考えを対話篇にしてみましょう。
-          </p>
-          <div class="privacy-note">
-            <span class="privacy-note__dot" aria-hidden="true"></span>
-            <span>内容はこの端末だけに自動保存されます</span>
-          </div>
-        </div>
-      </section>
-
       <div class="save-line" aria-live="polite">
         <span id="saveStatus">この端末に保存済み</span>
         <span id="messageCount">発言 0</span>
@@ -1331,14 +1280,6 @@
 
       <section id="desktopView" class="desktop-view" aria-label="文書形式の対話篇">
         <article class="paper">
-          <header class="paper__header">
-            <div>
-              <p>MY POLYPHONY / DIALOGUE</p>
-              <h2>思考の下書き</h2>
-            </div>
-            <time id="paperDate"></time>
-          </header>
-
           <div id="desktopEmpty" class="empty-state">
             <span aria-hidden="true">「</span>
             <p>ここから、もう一人の自分との対話を始めましょう。</p>
@@ -1393,6 +1334,22 @@
             <textarea id="mobileDraft" rows="1" placeholder="自分として書く"></textarea>
             <button type="submit" aria-label="発言を送る">送る</button>
           </form>
+        </div>
+      </section>
+
+      <section class="intro" aria-labelledby="pageTitle">
+        <div>
+          <p class="eyebrow">Dialogue as a thinking tool</p>
+          <h1 id="pageTitle">声を分けると、<br />考えがほどける。</h1>
+        </div>
+        <div class="intro__note">
+          <p>
+            自分の声と、もう一つの声。交互に言葉を置きながら、まだ形のない考えを対話篇にしてみましょう。
+          </p>
+          <div class="privacy-note">
+            <span class="privacy-note__dot" aria-hidden="true"></span>
+            <span>内容はこの端末だけに自動保存されます</span>
+          </div>
         </div>
       </section>
 
@@ -1768,7 +1725,6 @@
         desktopComposer: document.querySelector("#desktopComposer"),
         desktopDraft: document.querySelector("#desktopDraft"),
         desktopRoleLabel: document.querySelector("#desktopRoleLabel"),
-        paperDate: document.querySelector("#paperDate"),
         mobileView: document.querySelector("#mobileView"),
         mobileFeed: document.querySelector("#mobileFeed"),
         mobileMessages: document.querySelector("#mobileMessages"),
@@ -1797,14 +1753,6 @@
       
       function roleLabel(role) {
         return role === ROLE_SELF ? "自分" : "相手";
-      }
-      
-      function formatJapaneseDate(date = new Date()) {
-        return new Intl.DateTimeFormat("ja-JP", {
-          year: "numeric",
-          month: "long",
-          day: "numeric",
-        }).format(date);
       }
       
       function loadInitialState() {
@@ -2340,8 +2288,6 @@
         });
       }
       
-      elements.paperDate.textContent = formatJapaneseDate();
-      elements.paperDate.dateTime = new Date().toISOString().slice(0, 10);
       bindEvents();
       loadInitialState();
       renderAll();
