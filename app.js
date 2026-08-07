@@ -45,6 +45,7 @@ const elements = {
   mobileEmpty: document.querySelector("#mobileEmpty"),
   mobileComposer: document.querySelector("#mobileComposer"),
   mobileDraft: document.querySelector("#mobileDraft"),
+  mobileFullscreenButton: document.querySelector("#mobileFullscreenButton"),
   mobileRoleLabel: document.querySelector("#mobileRoleLabel"),
   editDialog: document.querySelector("#editDialog"),
   editForm: document.querySelector("#editForm"),
@@ -64,6 +65,7 @@ let editingId = null;
 let saveTimer = null;
 let toastTimer = null;
 let storageWriteBlocked = false;
+let immersiveMode = "off";
 
 function roleLabel(role) {
   return role === ROLE_SELF ? "自分" : "相手";
@@ -206,6 +208,103 @@ function setMode(mode, { manual = false, focus = false } = {}) {
   if (focus) {
     window.requestAnimationFrame(() => focusComposer());
   }
+}
+
+function renderMobileFullscreenButton() {
+  const isActive = immersiveMode !== "off";
+  const label = isActive ? "全画面表示を閉じる" : "チャットを全画面で開く";
+
+  elements.mobileFullscreenButton.textContent = isActive ? "×" : "⛶";
+  elements.mobileFullscreenButton.setAttribute("aria-label", label);
+  elements.mobileFullscreenButton.setAttribute("aria-pressed", String(isActive));
+  elements.mobileFullscreenButton.title = label;
+}
+
+function setImmersiveMode(mode) {
+  immersiveMode = mode;
+  document.documentElement.classList.toggle("mobile-immersive", mode !== "off");
+  renderMobileFullscreenButton();
+}
+
+function restoreResponsiveModeAfterImmersive() {
+  if (!hasManualMode) {
+    setMode(mobileMedia.matches ? "mobile" : "desktop");
+  }
+}
+
+async function enterMobileFullscreen() {
+  if (viewMode !== "mobile" || !mobileMedia.matches) {
+    return;
+  }
+
+  setImmersiveMode("fallback");
+
+  const requestFullscreen = document.documentElement.requestFullscreen;
+  if (typeof requestFullscreen !== "function") {
+    announce("チャットを画面いっぱいに表示しました");
+    return;
+  }
+
+  try {
+    await requestFullscreen.call(document.documentElement);
+    setImmersiveMode("native");
+    announce("チャットを全画面で表示しました");
+  } catch (error) {
+    setImmersiveMode("fallback");
+    announce("ブラウザ内でチャットを画面いっぱいに表示しました");
+    console.warn("全画面表示を開始できなかったため、画面内表示へ切り替えました。", error);
+  }
+}
+
+async function exitMobileFullscreen() {
+  if (document.fullscreenElement && typeof document.exitFullscreen === "function") {
+    try {
+      await document.exitFullscreen();
+    } catch (error) {
+      console.warn("全画面表示を終了できませんでした。", error);
+      if (document.fullscreenElement) {
+        setImmersiveMode("native");
+        announce("ブラウザの終了操作で全画面表示を閉じてください");
+        return;
+      }
+    }
+  }
+
+  setImmersiveMode("off");
+  restoreResponsiveModeAfterImmersive();
+  announce("全画面表示を閉じました");
+}
+
+function toggleMobileFullscreen() {
+  if (immersiveMode === "off") {
+    void enterMobileFullscreen();
+    return;
+  }
+
+  void exitMobileFullscreen();
+}
+
+function handleFullscreenChange() {
+  if (document.fullscreenElement === document.documentElement && immersiveMode !== "off") {
+    setImmersiveMode("native");
+    return;
+  }
+
+  if (!document.fullscreenElement && immersiveMode === "native") {
+    setImmersiveMode("off");
+    restoreResponsiveModeAfterImmersive();
+    announce("全画面表示を閉じました");
+  }
+}
+
+function handleFullscreenError(event) {
+  if (immersiveMode === "off") {
+    return;
+  }
+
+  setImmersiveMode("fallback");
+  announce("ブラウザ内でチャットを画面いっぱいに表示しました");
+  console.warn("全画面表示の要求が拒否されました。", event);
 }
 
 function autoGrow(textarea) {
@@ -582,6 +681,10 @@ function bindEvents() {
   });
 
   mobileMedia.addEventListener("change", (event) => {
+    if (immersiveMode !== "off") {
+      return;
+    }
+
     if (!hasManualMode) {
       setMode(event.matches ? "mobile" : "desktop");
     }
@@ -597,6 +700,7 @@ function bindEvents() {
 
   elements.mobileDraft.addEventListener("input", handleDraftInput);
   elements.mobileDraft.addEventListener("keydown", handleMobileKeydown);
+  elements.mobileFullscreenButton.addEventListener("click", toggleMobileFullscreen);
   elements.mobileRoleLabel.addEventListener("click", handleRoleToggle);
   elements.mobileComposer.addEventListener("submit", (event) => {
     event.preventDefault();
@@ -628,6 +732,9 @@ function bindEvents() {
       closeEditor();
     }
   });
+
+  document.addEventListener("fullscreenchange", handleFullscreenChange);
+  document.addEventListener("fullscreenerror", handleFullscreenError);
 
   window.addEventListener("beforeunload", () => {
     if (saveTimer) {

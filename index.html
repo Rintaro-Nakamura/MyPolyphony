@@ -789,6 +789,35 @@
         border-color: rgba(255, 255, 255, 0.42);
         background: rgba(255, 255, 255, 0.08);
       }
+
+      .phone-header__actions {
+        display: flex;
+        align-items: center;
+        justify-content: flex-end;
+        gap: 0.35rem;
+      }
+
+      .phone-header__fullscreen {
+        display: none;
+        width: 2.75rem;
+        height: 2.75rem;
+        padding: 0;
+        color: #dfe2ff;
+        border: 1px solid rgba(255, 255, 255, 0.18);
+        border-radius: 50%;
+        background: transparent;
+        font-size: 1rem;
+        line-height: 1;
+        cursor: pointer;
+        transition: color 150ms ease, border-color 150ms ease, background 150ms ease;
+      }
+
+      .phone-header__fullscreen:hover,
+      .phone-header__fullscreen[aria-pressed="true"] {
+        color: white;
+        border-color: rgba(255, 255, 255, 0.42);
+        background: rgba(255, 255, 255, 0.1);
+      }
       
       .mobile-feed {
         min-height: 0;
@@ -947,6 +976,64 @@
       
       .mobile-composer[data-role="other"] button {
         background: var(--voice);
+      }
+
+      html.mobile-immersive,
+      html.mobile-immersive body {
+        width: 100%;
+        height: 100%;
+        overflow: hidden;
+        overscroll-behavior: none;
+      }
+
+      html.mobile-immersive .mobile-view {
+        position: fixed;
+        z-index: 90;
+        inset: 0;
+        display: block;
+        width: 100%;
+        height: 100%;
+        height: 100dvh;
+        padding: 0;
+        background: #edf0f4;
+      }
+
+      html.mobile-immersive .phone-frame {
+        width: 100%;
+        max-width: none;
+        height: 100%;
+        height: 100dvh;
+        min-height: 0;
+        margin: 0;
+        border: 0;
+        border-radius: 0;
+        box-shadow: none;
+      }
+
+      html.mobile-immersive .phone-header {
+        padding:
+          calc(1rem + env(safe-area-inset-top))
+          calc(1.1rem + env(safe-area-inset-right))
+          0.9rem
+          calc(1.1rem + env(safe-area-inset-left));
+      }
+
+      html.mobile-immersive .mobile-feed {
+        padding-right: calc(0.85rem + env(safe-area-inset-right));
+        padding-left: calc(0.85rem + env(safe-area-inset-left));
+      }
+
+      html.mobile-immersive .mobile-composer {
+        padding:
+          0.7rem
+          calc(0.75rem + env(safe-area-inset-right))
+          calc(0.7rem + env(safe-area-inset-bottom))
+          calc(0.75rem + env(safe-area-inset-left));
+      }
+
+      html.mobile-immersive .phone-header__fullscreen {
+        display: grid;
+        place-items: center;
       }
       
       .page-footer {
@@ -1204,6 +1291,11 @@
           border-width: 5px;
           border-radius: 1.7rem;
         }
+
+        .phone-header__fullscreen {
+          display: grid;
+          place-items: center;
+        }
       
         .message-actions {
           opacity: 0.72;
@@ -1370,12 +1462,22 @@
               <h2>ふたつの声</h2>
               <p>自分のなかの対話篇</p>
             </div>
-            <button
-              id="mobileRoleLabel"
-              class="phone-header__turn"
-              type="button"
-              aria-label="次の話者は自分です。クリックすると相手に切り替わります。"
-            >次は自分</button>
+            <div class="phone-header__actions">
+              <button
+                id="mobileFullscreenButton"
+                class="phone-header__fullscreen"
+                type="button"
+                aria-label="チャットを全画面で開く"
+                aria-pressed="false"
+                title="全画面で開く"
+              >⛶</button>
+              <button
+                id="mobileRoleLabel"
+                class="phone-header__turn"
+                type="button"
+                aria-label="次の話者は自分です。クリックすると相手に切り替わります。"
+              >次は自分</button>
+            </div>
           </header>
 
           <div id="mobileFeed" class="mobile-feed">
@@ -1839,6 +1941,7 @@
         mobileEmpty: document.querySelector("#mobileEmpty"),
         mobileComposer: document.querySelector("#mobileComposer"),
         mobileDraft: document.querySelector("#mobileDraft"),
+        mobileFullscreenButton: document.querySelector("#mobileFullscreenButton"),
         mobileRoleLabel: document.querySelector("#mobileRoleLabel"),
         editDialog: document.querySelector("#editDialog"),
         editForm: document.querySelector("#editForm"),
@@ -1858,6 +1961,7 @@
       let saveTimer = null;
       let toastTimer = null;
       let storageWriteBlocked = false;
+      let immersiveMode = "off";
       
       function roleLabel(role) {
         return role === ROLE_SELF ? "自分" : "相手";
@@ -2000,6 +2104,103 @@
         if (focus) {
           window.requestAnimationFrame(() => focusComposer());
         }
+      }
+
+      function renderMobileFullscreenButton() {
+        const isActive = immersiveMode !== "off";
+        const label = isActive ? "全画面表示を閉じる" : "チャットを全画面で開く";
+
+        elements.mobileFullscreenButton.textContent = isActive ? "×" : "⛶";
+        elements.mobileFullscreenButton.setAttribute("aria-label", label);
+        elements.mobileFullscreenButton.setAttribute("aria-pressed", String(isActive));
+        elements.mobileFullscreenButton.title = label;
+      }
+
+      function setImmersiveMode(mode) {
+        immersiveMode = mode;
+        document.documentElement.classList.toggle("mobile-immersive", mode !== "off");
+        renderMobileFullscreenButton();
+      }
+
+      function restoreResponsiveModeAfterImmersive() {
+        if (!hasManualMode) {
+          setMode(mobileMedia.matches ? "mobile" : "desktop");
+        }
+      }
+
+      async function enterMobileFullscreen() {
+        if (viewMode !== "mobile" || !mobileMedia.matches) {
+          return;
+        }
+
+        setImmersiveMode("fallback");
+
+        const requestFullscreen = document.documentElement.requestFullscreen;
+        if (typeof requestFullscreen !== "function") {
+          announce("チャットを画面いっぱいに表示しました");
+          return;
+        }
+
+        try {
+          await requestFullscreen.call(document.documentElement);
+          setImmersiveMode("native");
+          announce("チャットを全画面で表示しました");
+        } catch (error) {
+          setImmersiveMode("fallback");
+          announce("ブラウザ内でチャットを画面いっぱいに表示しました");
+          console.warn("全画面表示を開始できなかったため、画面内表示へ切り替えました。", error);
+        }
+      }
+
+      async function exitMobileFullscreen() {
+        if (document.fullscreenElement && typeof document.exitFullscreen === "function") {
+          try {
+            await document.exitFullscreen();
+          } catch (error) {
+            console.warn("全画面表示を終了できませんでした。", error);
+            if (document.fullscreenElement) {
+              setImmersiveMode("native");
+              announce("ブラウザの終了操作で全画面表示を閉じてください");
+              return;
+            }
+          }
+        }
+
+        setImmersiveMode("off");
+        restoreResponsiveModeAfterImmersive();
+        announce("全画面表示を閉じました");
+      }
+
+      function toggleMobileFullscreen() {
+        if (immersiveMode === "off") {
+          void enterMobileFullscreen();
+          return;
+        }
+
+        void exitMobileFullscreen();
+      }
+
+      function handleFullscreenChange() {
+        if (document.fullscreenElement === document.documentElement && immersiveMode !== "off") {
+          setImmersiveMode("native");
+          return;
+        }
+
+        if (!document.fullscreenElement && immersiveMode === "native") {
+          setImmersiveMode("off");
+          restoreResponsiveModeAfterImmersive();
+          announce("全画面表示を閉じました");
+        }
+      }
+
+      function handleFullscreenError(event) {
+        if (immersiveMode === "off") {
+          return;
+        }
+
+        setImmersiveMode("fallback");
+        announce("ブラウザ内でチャットを画面いっぱいに表示しました");
+        console.warn("全画面表示の要求が拒否されました。", event);
       }
       
       function autoGrow(textarea) {
@@ -2376,6 +2577,10 @@
         });
       
         mobileMedia.addEventListener("change", (event) => {
+          if (immersiveMode !== "off") {
+            return;
+          }
+
           if (!hasManualMode) {
             setMode(event.matches ? "mobile" : "desktop");
           }
@@ -2391,6 +2596,7 @@
       
         elements.mobileDraft.addEventListener("input", handleDraftInput);
         elements.mobileDraft.addEventListener("keydown", handleMobileKeydown);
+        elements.mobileFullscreenButton.addEventListener("click", toggleMobileFullscreen);
         elements.mobileRoleLabel.addEventListener("click", handleRoleToggle);
         elements.mobileComposer.addEventListener("submit", (event) => {
           event.preventDefault();
@@ -2422,6 +2628,9 @@
             closeEditor();
           }
         });
+
+        document.addEventListener("fullscreenchange", handleFullscreenChange);
+        document.addEventListener("fullscreenerror", handleFullscreenError);
       
         window.addEventListener("beforeunload", () => {
           if (saveTimer) {

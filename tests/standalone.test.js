@@ -49,7 +49,7 @@ test("開始の鍵括弧を残し、紹介を本文の後へ移している", as
   assert.ok(intro > composer && footer > intro);
   assert.equal(html.includes("思考の下書き"), false);
   assert.equal(html.includes('id="desktopEmpty"'), true);
-  assert.equal(html.includes("ここから、もう一人の自分との対話を始めましょう。"), true);
+  assert.equal(html.includes("自分の「声」との対話を始めましょう。"), true);
 });
 
 test("次の話者表示を送信ではない切替ボタンとして備えている", async () => {
@@ -80,4 +80,26 @@ test("文書上部に対話の開始日時を示す罫線付きヘッダーが�
   assert.match(html, /\.dialogue-note-header[\s\S]*?height:\s*68px/);
   assert.match(html, /\.paper[\s\S]*?padding:\s*0 var\(--paper-gutter\)/);
   assert.equal(html.includes("対話のはじまり"), false);
+});
+
+test("スマホ表示だけに全画面の開始・解除機能を備えている", async () => {
+  const html = await readFile(new URL("../index.html", import.meta.url), "utf8");
+
+  assert.match(
+    html,
+    /<button\s+id="mobileFullscreenButton"[\s\S]*?aria-label="チャットを全画面で開く"[\s\S]*?aria-pressed="false"/,
+  );
+  assert.match(html, /\.phone-header__fullscreen\s*\{[\s\S]*?display:\s*none;/);
+  assert.match(
+    html,
+    /@media \(max-width: 767px\)[\s\S]*?\.phone-header__fullscreen\s*\{[\s\S]*?display:\s*grid;/,
+  );
+  assert.match(
+    html,
+    /html\.mobile-immersive \.phone-frame\s*\{[\s\S]*?height:\s*100dvh;[\s\S]*?border:\s*0;/,
+  );
+  assert.match(html, /requestFullscreen\.call\(document\.documentElement\)/);
+  assert.match(html, /await document\.exitFullscreen\(\)/);
+  assert.match(html, /document\.addEventListener\("fullscreenchange", handleFullscreenChange\)/);
+  assert.match(html, /setImmersiveMode\("fallback"\)/);
 });
