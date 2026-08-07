@@ -430,10 +430,11 @@
       }
       
       .paper {
+        --paper-gutter: clamp(2rem, 6vw, 5.2rem);
         position: relative;
         width: min(930px, 100%);
         min-height: 680px;
-        padding: clamp(2rem, 6vw, 5.2rem);
+        padding: 0 var(--paper-gutter) var(--paper-gutter);
         margin: 0 auto;
         overflow: hidden;
         background:
@@ -452,6 +453,28 @@
         width: 1px;
         content: "";
         background: rgba(221, 103, 66, 0.18);
+      }
+
+      .dialogue-note-header {
+        display: flex;
+        align-items: flex-end;
+        justify-content: flex-end;
+        height: 68px;
+        padding: 0 calc(var(--paper-gutter) - 1rem) 4px;
+        margin-right: calc(1rem - var(--paper-gutter));
+        margin-left: calc(1rem - var(--paper-gutter));
+        margin-bottom: 1.7rem;
+        color: #8b887f;
+        border-bottom: 1px solid rgba(112, 109, 102, 0.48);
+      }
+
+      .dialogue-note-header time {
+        font-family: var(--font-serif);
+        font-size: 0.9rem;
+        font-weight: 500;
+        letter-spacing: 0.08em;
+        word-spacing: 0.1em;
+        transform: translateX(34px);
       }
 
       .empty-state {
@@ -1300,6 +1323,10 @@
 
       <section id="desktopView" class="desktop-view" aria-label="文書形式の対話篇">
         <article class="paper">
+          <header class="dialogue-note-header" aria-label="対話の開始日時">
+            <time id="dialogueStartedAt"></time>
+          </header>
+
           <div id="desktopEmpty" class="empty-state">
             <span aria-hidden="true">「</span>
             <p>ここから、もう一人の自分との対話を始めましょう。</p>
@@ -1446,11 +1473,36 @@
         return `${Date.now().toString(36)}-${Math.random().toString(36).slice(2)}`;
       }
       
-      function createInitialState() {
+      function normalizeStartedAt(value) {
+        const date = value instanceof Date ? value : new Date(value);
+        if (Number.isNaN(date.getTime())) {
+          throw new TypeError("対話の開始日時が正しくありません。");
+        }
+
+        return date.toISOString();
+      }
+
+      function createInitialState(startedAt = new Date()) {
         return {
           messages: [],
           draft: "",
           nextRole: ROLE_SELF,
+          startedAt: normalizeStartedAt(startedAt),
+        };
+      }
+
+      function refreshStartedAtIfEmpty(state, startedAt = new Date()) {
+        if (!Array.isArray(state?.messages) || typeof state.draft !== "string") {
+          throw new TypeError("対話篇の状態が正しくありません。");
+        }
+
+        if (state.messages.length > 0 || state.draft.trim().length > 0) {
+          return state;
+        }
+
+        return {
+          ...state,
+          startedAt: normalizeStartedAt(startedAt),
         };
       }
       
@@ -1498,6 +1550,7 @@
         };
       
         return {
+          ...state,
           messages: [...state.messages, message],
           draft: "",
           nextRole: oppositeRole(state.nextRole),
@@ -1572,16 +1625,19 @@
         if (typeof state.draft !== "string" || !isRole(state.nextRole)) {
           throw new TypeError("保存する対話篇の状態が正しくありません。");
         }
+
+        const startedAt = normalizeStartedAt(state.startedAt);
       
         return JSON.stringify({
           version: STORAGE_VERSION,
           messages: state.messages,
           draft: normalizeText(state.draft),
           nextRole: state.nextRole,
+          startedAt,
         });
       }
       
-      function parseStoredState(source) {
+      function parseStoredState(source, migratedStartedAt = new Date()) {
         const data = JSON.parse(source);
       
         if (!data || typeof data !== "object" || data.version !== STORAGE_VERSION) {
@@ -1597,6 +1653,10 @@
         if (typeof data.draft !== "string" || !isRole(data.nextRole)) {
           throw new TypeError("保存データの下書き状態が正しくありません。");
         }
+
+        const startedAt = normalizeStartedAt(
+          data.startedAt === undefined ? migratedStartedAt : data.startedAt,
+        );
       
         return {
           messages: data.messages.map((message) => ({
@@ -1606,6 +1666,7 @@
           })),
           draft: normalizeText(data.draft),
           nextRole: data.nextRole,
+          startedAt,
         };
       }
       
@@ -1632,7 +1693,7 @@
         return `${JSON.stringify(createDialogueExport(messages, exportedAt), null, 2)}\n`;
       }
       
-      function parseDialogue(source, idFactory = createId) {
+      function parseDialogue(source, idFactory = createId, startedAt = new Date()) {
         const data = JSON.parse(source);
       
         if (!data || typeof data !== "object" || Array.isArray(data)) {
@@ -1640,7 +1701,7 @@
         }
       
         if (data.format !== EXPORT_FORMAT) {
-          throw new TypeError("MyPolyphonyのJSONファイルではありません。");
+          throw new TypeError("My PolyphonyのJSONファイルではありません。");
         }
       
         if (data.version !== EXPORT_VERSION) {
@@ -1667,6 +1728,7 @@
           messages,
           draft: "",
           nextRole: nextRoleFromMessages(messages),
+          startedAt: normalizeStartedAt(startedAt),
         };
       }
       
@@ -1713,6 +1775,7 @@
         oppositeRole,
         createId,
         createInitialState,
+        refreshStartedAtIfEmpty,
         nextRoleFromMessages,
         commitDraft,
         updateDraft,
@@ -1742,6 +1805,7 @@
         editMessage,
         parseDialogue,
         parseStoredState,
+        refreshStartedAtIfEmpty,
         serializeDialogue,
         serializePlainText,
         serializeStoredState,
@@ -1768,6 +1832,7 @@
         desktopComposer: document.querySelector("#desktopComposer"),
         desktopDraft: document.querySelector("#desktopDraft"),
         desktopRoleLabel: document.querySelector("#desktopRoleLabel"),
+        dialogueStartedAt: document.querySelector("#dialogueStartedAt"),
         mobileView: document.querySelector("#mobileView"),
         mobileFeed: document.querySelector("#mobileFeed"),
         mobileMessages: document.querySelector("#mobileMessages"),
@@ -1797,12 +1862,23 @@
       function roleLabel(role) {
         return role === ROLE_SELF ? "自分" : "相手";
       }
+
+      function formatDialogueStartedAt(value) {
+        const date = new Date(value);
+        const weekday = ["日", "月", "火", "水", "木", "金", "土"][date.getDay()];
+        const minute = String(date.getMinutes()).padStart(2, "0");
+        return `${date.getMonth() + 1} 月 ${date.getDate()} 日（${weekday}）　${date.getHours()} 時 ${minute} 分`;
+      }
       
       function loadInitialState() {
         try {
           const stored = localStorage.getItem(STORAGE_KEY);
           if (stored) {
-            state = parseStoredState(stored);
+            const restored = parseStoredState(stored);
+            state = refreshStartedAtIfEmpty(restored);
+            if (state !== restored) {
+              persistNow();
+            }
           }
         } catch (error) {
           storageWriteBlocked = true;
@@ -2025,6 +2101,11 @@
         elements.exportJsonButton.disabled = state.messages.length === 0;
         elements.exportTextButton.disabled = state.messages.length === 0;
       }
+
+      function renderNoteHeader() {
+        elements.dialogueStartedAt.dateTime = state.startedAt;
+        elements.dialogueStartedAt.textContent = formatDialogueStartedAt(state.startedAt);
+      }
       
       function renderComposer() {
         const label = roleLabel(state.nextRole);
@@ -2057,6 +2138,7 @@
       }
       
       function renderAll({ focus = false, scroll = false } = {}) {
+        renderNoteHeader();
         renderMessages();
         renderComposer();
         setMode(viewMode);
@@ -2266,12 +2348,10 @@
       
       function resetDialogue() {
         const hasWork = state.messages.length > 0 || state.draft.trim().length > 0 || storageWriteBlocked;
-        if (!hasWork) {
-          focusComposer();
-          return;
-        }
-      
-        if (!window.confirm("現在の対話篇を消して、新しく始めますか？ この操作は元に戻せません。")) {
+        if (
+          hasWork &&
+          !window.confirm("現在の対話篇を消して、新しく始めますか？ この操作は元に戻せません。")
+        ) {
           return;
         }
       

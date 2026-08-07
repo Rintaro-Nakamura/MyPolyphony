@@ -418,10 +418,11 @@ textarea {
 }
 
 .paper {
+  --paper-gutter: clamp(2rem, 6vw, 5.2rem);
   position: relative;
   width: min(930px, 100%);
   min-height: 680px;
-  padding: clamp(2rem, 6vw, 5.2rem);
+  padding: 0 var(--paper-gutter) var(--paper-gutter);
   margin: 0 auto;
   overflow: hidden;
   background:
@@ -440,6 +441,28 @@ textarea {
   width: 1px;
   content: "";
   background: rgba(221, 103, 66, 0.18);
+}
+
+.dialogue-note-header {
+  display: flex;
+  align-items: flex-end;
+  justify-content: flex-end;
+  height: 68px;
+  padding: 0 calc(var(--paper-gutter) - 1rem) 4px;
+  margin-right: calc(1rem - var(--paper-gutter));
+  margin-left: calc(1rem - var(--paper-gutter));
+  margin-bottom: 1.7rem;
+  color: #8b887f;
+  border-bottom: 1px solid rgba(112, 109, 102, 0.48);
+}
+
+.dialogue-note-header time {
+  font-family: var(--font-serif);
+  font-size: 0.9rem;
+  font-weight: 500;
+  letter-spacing: 0.08em;
+  word-spacing: 0.1em;
+  transform: translateX(34px);
 }
 
 .empty-state {

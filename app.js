@@ -11,6 +11,7 @@ const {
   editMessage,
   parseDialogue,
   parseStoredState,
+  refreshStartedAtIfEmpty,
   serializeDialogue,
   serializePlainText,
   serializeStoredState,
@@ -37,6 +38,7 @@ const elements = {
   desktopComposer: document.querySelector("#desktopComposer"),
   desktopDraft: document.querySelector("#desktopDraft"),
   desktopRoleLabel: document.querySelector("#desktopRoleLabel"),
+  dialogueStartedAt: document.querySelector("#dialogueStartedAt"),
   mobileView: document.querySelector("#mobileView"),
   mobileFeed: document.querySelector("#mobileFeed"),
   mobileMessages: document.querySelector("#mobileMessages"),
@@ -67,11 +69,22 @@ function roleLabel(role) {
   return role === ROLE_SELF ? "自分" : "相手";
 }
 
+function formatDialogueStartedAt(value) {
+  const date = new Date(value);
+  const weekday = ["日", "月", "火", "水", "木", "金", "土"][date.getDay()];
+  const minute = String(date.getMinutes()).padStart(2, "0");
+  return `${date.getMonth() + 1} 月 ${date.getDate()} 日（${weekday}）　${date.getHours()} 時 ${minute} 分`;
+}
+
 function loadInitialState() {
   try {
     const stored = localStorage.getItem(STORAGE_KEY);
     if (stored) {
-      state = parseStoredState(stored);
+      const restored = parseStoredState(stored);
+      state = refreshStartedAtIfEmpty(restored);
+      if (state !== restored) {
+        persistNow();
+      }
     }
   } catch (error) {
     storageWriteBlocked = true;
@@ -295,6 +308,11 @@ function renderMessages() {
   elements.exportTextButton.disabled = state.messages.length === 0;
 }
 
+function renderNoteHeader() {
+  elements.dialogueStartedAt.dateTime = state.startedAt;
+  elements.dialogueStartedAt.textContent = formatDialogueStartedAt(state.startedAt);
+}
+
 function renderComposer() {
   const label = roleLabel(state.nextRole);
   const alternateLabel = roleLabel(state.nextRole === ROLE_SELF ? ROLE_OTHER : ROLE_SELF);
@@ -326,6 +344,7 @@ function handleRoleToggle() {
 }
 
 function renderAll({ focus = false, scroll = false } = {}) {
+  renderNoteHeader();
   renderMessages();
   renderComposer();
   setMode(viewMode);
@@ -535,12 +554,10 @@ async function importJson(event) {
 
 function resetDialogue() {
   const hasWork = state.messages.length > 0 || state.draft.trim().length > 0 || storageWriteBlocked;
-  if (!hasWork) {
-    focusComposer();
-    return;
-  }
-
-  if (!window.confirm("現在の対話篇を消して、新しく始めますか？ この操作は元に戻せません。")) {
+  if (
+    hasWork &&
+    !window.confirm("現在の対話篇を消して、新しく始めますか？ この操作は元に戻せません。")
+  ) {
     return;
   }
 

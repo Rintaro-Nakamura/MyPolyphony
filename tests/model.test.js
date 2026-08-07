@@ -13,6 +13,7 @@ const {
   editMessage,
   parseDialogue,
   parseStoredState,
+  refreshStartedAtIfEmpty,
   serializeDialogue,
   serializePlainText,
   serializeStoredState,
@@ -79,11 +80,12 @@ test("編集は話者を変えず、削除後の次話者は最後の発言か�
   assert.equal(deleted.draft, "途中");
 });
 
-test("端末内保存は発言、下書き、次話者を復元する", () => {
+test("端末内保存は発言、下書き、次話者、開始日時を復元する", () => {
   const state = {
     messages: [{ id: "m1", role: ROLE_SELF, text: "保存する\r\n本文" }],
     draft: "入力\r途中",
     nextRole: ROLE_OTHER,
+    startedAt: "2026-08-07T12:34:00.000Z",
   };
 
   const restored = parseStoredState(serializeStoredState(state));
@@ -91,7 +93,52 @@ test("端末内保存は発言、下書き、次話者を復元する", () => {
     messages: [{ id: "m1", role: ROLE_SELF, text: "保存する\n本文" }],
     draft: "入力\n途中",
     nextRole: ROLE_OTHER,
+    startedAt: "2026-08-07T12:34:00.000Z",
   });
+});
+
+test("開始日時は発言後も維持され、旧保存データには移行日時を補う", () => {
+  const startedAt = new Date("2026-08-07T01:02:00.000Z");
+  let state = createInitialState(startedAt);
+  state = updateDraft(state, "最初の発言");
+  state = commitDraft(state, ids("m1"));
+  assert.equal(state.startedAt, startedAt.toISOString());
+
+  const legacy = JSON.stringify({
+    version: 1,
+    messages: state.messages,
+    draft: "",
+    nextRole: state.nextRole,
+  });
+  const migratedAt = new Date("2026-08-07T03:04:00.000Z");
+  assert.equal(parseStoredState(legacy, migratedAt).startedAt, migratedAt.toISOString());
+});
+
+test("空の保存状態だけ開始日時を現在時刻へ更新する", () => {
+  const previousStartedAt = "2026-08-06T01:02:00.000Z";
+  const refreshedAt = new Date("2026-08-07T03:04:00.000Z");
+  const emptyState = {
+    messages: [],
+    draft: "",
+    nextRole: ROLE_OTHER,
+    startedAt: previousStartedAt,
+  };
+
+  const refreshed = refreshStartedAtIfEmpty(emptyState, refreshedAt);
+  assert.notEqual(refreshed, emptyState);
+  assert.equal(refreshed.startedAt, refreshedAt.toISOString());
+  assert.equal(refreshed.nextRole, ROLE_OTHER);
+
+  const withMessage = {
+    ...emptyState,
+    messages: [{ id: "m1", role: ROLE_SELF, text: "続きの発言" }],
+  };
+  assert.equal(refreshStartedAtIfEmpty(withMessage, refreshedAt), withMessage);
+  assert.equal(withMessage.startedAt, previousStartedAt);
+
+  const withDraft = { ...emptyState, draft: "入力途中" };
+  assert.equal(refreshStartedAtIfEmpty(withDraft, refreshedAt), withDraft);
+  assert.equal(withDraft.startedAt, previousStartedAt);
 });
 
 test("JSONは話者、順序、改行を保って往復する", () => {
@@ -100,7 +147,8 @@ test("JSONは話者、順序、改行を保って往復する", () => {
     { id: "m2", role: ROLE_OTHER, text: "返事" },
   ];
   const json = serializeDialogue(messages, new Date("2026-08-06T12:00:00.000Z"));
-  const restored = parseDialogue(json, ids("r1", "r2"));
+  const startedAt = new Date("2026-08-07T08:09:00.000Z");
+  const restored = parseDialogue(json, ids("r1", "r2"), startedAt);
 
   assert.deepEqual(
     restored.messages,
@@ -110,6 +158,7 @@ test("JSONは話者、順序、改行を保って往復する", () => {
     ],
   );
   assert.equal(restored.nextRole, ROLE_SELF);
+  assert.equal(restored.startedAt, startedAt.toISOString());
 });
 
 test("壊れたJSONと未対応バージョンを拒否する", () => {

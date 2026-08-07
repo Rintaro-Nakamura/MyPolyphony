@@ -30,11 +30,36 @@ function createId() {
   return `${Date.now().toString(36)}-${Math.random().toString(36).slice(2)}`;
 }
 
-function createInitialState() {
+function normalizeStartedAt(value) {
+  const date = value instanceof Date ? value : new Date(value);
+  if (Number.isNaN(date.getTime())) {
+    throw new TypeError("対話の開始日時が正しくありません。");
+  }
+
+  return date.toISOString();
+}
+
+function createInitialState(startedAt = new Date()) {
   return {
     messages: [],
     draft: "",
     nextRole: ROLE_SELF,
+    startedAt: normalizeStartedAt(startedAt),
+  };
+}
+
+function refreshStartedAtIfEmpty(state, startedAt = new Date()) {
+  if (!Array.isArray(state?.messages) || typeof state.draft !== "string") {
+    throw new TypeError("対話篇の状態が正しくありません。");
+  }
+
+  if (state.messages.length > 0 || state.draft.trim().length > 0) {
+    return state;
+  }
+
+  return {
+    ...state,
+    startedAt: normalizeStartedAt(startedAt),
   };
 }
 
@@ -82,6 +107,7 @@ function commitDraft(state, idFactory = createId) {
   };
 
   return {
+    ...state,
     messages: [...state.messages, message],
     draft: "",
     nextRole: oppositeRole(state.nextRole),
@@ -157,15 +183,18 @@ function serializeStoredState(state) {
     throw new TypeError("保存する対話篇の状態が正しくありません。");
   }
 
+  const startedAt = normalizeStartedAt(state.startedAt);
+
   return JSON.stringify({
     version: STORAGE_VERSION,
     messages: state.messages,
     draft: normalizeText(state.draft),
     nextRole: state.nextRole,
+    startedAt,
   });
 }
 
-function parseStoredState(source) {
+function parseStoredState(source, migratedStartedAt = new Date()) {
   const data = JSON.parse(source);
 
   if (!data || typeof data !== "object" || data.version !== STORAGE_VERSION) {
@@ -182,6 +211,10 @@ function parseStoredState(source) {
     throw new TypeError("保存データの下書き状態が正しくありません。");
   }
 
+  const startedAt = normalizeStartedAt(
+    data.startedAt === undefined ? migratedStartedAt : data.startedAt,
+  );
+
   return {
     messages: data.messages.map((message) => ({
       id: message.id,
@@ -190,6 +223,7 @@ function parseStoredState(source) {
     })),
     draft: normalizeText(data.draft),
     nextRole: data.nextRole,
+    startedAt,
   };
 }
 
@@ -216,7 +250,7 @@ function serializeDialogue(messages, exportedAt = new Date()) {
   return `${JSON.stringify(createDialogueExport(messages, exportedAt), null, 2)}\n`;
 }
 
-function parseDialogue(source, idFactory = createId) {
+function parseDialogue(source, idFactory = createId, startedAt = new Date()) {
   const data = JSON.parse(source);
 
   if (!data || typeof data !== "object" || Array.isArray(data)) {
@@ -251,6 +285,7 @@ function parseDialogue(source, idFactory = createId) {
     messages,
     draft: "",
     nextRole: nextRoleFromMessages(messages),
+    startedAt: normalizeStartedAt(startedAt),
   };
 }
 
@@ -297,6 +332,7 @@ globalThis.MyPolyphonyModel = Object.freeze({
   oppositeRole,
   createId,
   createInitialState,
+  refreshStartedAtIfEmpty,
   nextRoleFromMessages,
   commitDraft,
   updateDraft,
