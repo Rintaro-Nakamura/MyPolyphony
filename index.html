@@ -390,6 +390,18 @@
         border-radius: 50%;
         box-shadow: 0 0 0 4px rgba(51, 118, 96, 0.12);
       }
+
+      .intro__example-button {
+        margin-top: 1rem;
+        padding: 0;
+        color: var(--accent-dark);
+        border: 0;
+        border-bottom: 1px solid currentColor;
+        background: transparent;
+        font-size: 0.74rem;
+        font-weight: 800;
+        cursor: pointer;
+      }
       
       .save-line {
         display: flex;
@@ -1510,6 +1522,9 @@
             <span class="privacy-note__dot" aria-hidden="true"></span>
             <span>内容はこの端末だけに自動保存されます</span>
           </div>
+          <button id="loadExampleButton" class="intro__example-button" type="button">
+            制作者の具体例を見る
+          </button>
         </div>
       </section>
 
@@ -1541,6 +1556,70 @@
 
     <div id="toast" class="toast" role="status" aria-live="polite" hidden></div>
     <div id="liveRegion" class="visually-hidden" aria-live="polite"></div>
+
+    <script id="toolSpecificationExample" type="application/json">
+      {
+        "format": "my-polyphony-dialogue",
+        "version": 1,
+        "exportedAt": "2026-08-06T15:00:00.000Z",
+        "messages": [
+          { "role": "self", "text": "明日、また明治大学のオープンキャンパスでプログラミング成果発表会が開催される。そこでさ、今からプログラミングでの作品を一つ作ってしまって、それを軸に発表してみようと考えているんだ。" },
+          { "role": "other", "text": "ほー、なるほど？ 今から？" },
+          { "role": "self", "text": "うん、今から。この夜の時間をつかって、一つの作品を創り、それを以てAIと対話しながら作った作品の一つの例としてプレゼンしてみようと思うんだ。" },
+          { "role": "other", "text": "うーん、なるほどね。で、どうするの？ というか何を創るの？" },
+          { "role": "self", "text": "この状況をできるだけ支援するプログラミングかな。" },
+          { "role": "other", "text": "？ 君が迷っていること？" },
+          { "role": "self", "text": "いやいや、メタな話で申し訳ないけれど、僕らが今まさに対話しているというこの状況を、さ。" },
+          { "role": "other", "text": "なるほどね。じゃあ、こちらもメタに返せば、君は今Scrapboxの中で対話篇を紡いでいて、その中で自分が創りたいものについて考えようとしているわけで、で、その対話篇を紡いでいくために改行、括弧、また色分けを使っている。こんな確認で大丈夫かな？" },
+          { "role": "self", "text": "うん、大丈夫。" },
+          { "role": "other", "text": "じゃ、どう支援したいの？" },
+          { "role": "self", "text": "すくなくとも、改行ボタン一つでこの括弧と、また色分けが自動生成される状況には行きたいかなぁ。" },
+          { "role": "other", "text": "まぁ必要かしらね。他には？" },
+          { "role": "self", "text": "声で入力できる状態も整えられるなら嬉しいなぁと思うけど、でも声入力はちょっとハードルが高い気がする。" },
+          { "role": "other", "text": "うーん、まぁ、そうかもね。どのAPIを使って？ という話になりそうだし、声で入力をするとするなら、漢字変換もひと手間になるかもしれない。" },
+          { "role": "self", "text": "そもそも文字通りに受け取ってくれないことはまだ多いしね。" },
+          { "role": "other", "text": "や、ChatGPTは割と精度高い気がするよ？ Google Pixelとかの純正の音声認識は精度ちょっと悪いけど。" },
+          { "role": "self", "text": "あ、そうかも。うーん、でも、一旦動くところまで行きたいから、テキスト入力に絞って、それをMVPにしたいかなぁ。" },
+          { "role": "other", "text": "Minimum Viable Productね。" },
+          { "role": "self", "text": "うん。MVPの考え方すきなんだ。まずは動かせるところまで作ってみようっていうね。" },
+          { "role": "other", "text": "高すぎるハードルを最初から設定しないのは良いよね。じゃ、お次は？" },
+          { "role": "self", "text": "PCとスマホの両方から動かせる形式を整えてはおきたいな。大学生になれば（少なくともFMSは）日常的にPCは触ることになるだろうけれど、でも今回のオーディエンスには高校生も居るわけで、高校生が使うっていうことを考えてみると、スマホから動かせることは必要だと思うよ。そのとき問題なのは、このPCでのUIがスマホでのUIと同じにしてよいか、という問題だね。" },
+          { "role": "other", "text": "選択可能にしちゃえば？ AI君がつくってくれるし、両タイプ、まぁつまり、一応の片方はPCでの入力に適したUIにしてもらって、もう片方のスマホのUIはそっちに適した形になってみると良いのかなぁと思うよ。" },
+          { "role": "self", "text": "選択可能にするのは良いね。良いけど、じゃあ具体的にはどのようなデザインが良いのさ。" },
+          { "role": "other", "text": "まぁPC側はこのScrapbox上での対話篇を今実際に書いているけれども、このデザインを一旦は流用してしまう形で良いんじゃないかなぁ。あ、著作権の問題があるかもだから、多少は変更したほうがいいかもだね。最終的には高校生に対して配布することも考えているのでしょう？" },
+          { "role": "self", "text": "うん、そう。まぁ、うーん、根本の発想だけもらってくる形でいいかなぁ。つまり、今僕らは僕らの声を僕と君とに分けているけれど、これがちゃんと分かれているなぁって思えるのって、君側の声の下地に僕とは異なる色が在ることじゃない？ だから、対話相手側の色を僕とは違う色になることこそが重要であるように思うんだ。" },
+          { "role": "other", "text": "そうかな、うん、そうっぽいね。そしたら、対話相手側の下地だけ変更することをしてみようか。" },
+          { "role": "self", "text": "うん。あと、相手の下地だけ変更するので済んでいるのは、対話相手が一人だからっていうこの現状もまた要因の一つであると思ったね。" },
+          { "role": "other", "text": "ん？ というと？" },
+          { "role": "self", "text": "つまり、もしこれが君だけじゃなくて、他にもAさんBさんCさんとの対話篇でもあるとしたら、相手の言葉が誰からの言葉なのかを改めて示してあげる必要があると思うんだ。だから、実演してみると。" },
+          { "role": "self", "text": "僕「こういう感じだね。」" },
+          { "role": "other", "text": "君「お〜、なるほど。僕は“君”なわけだ。」" },
+          { "role": "self", "text": "僕「うん、そゆこと。LINEとかでよく見る形だね。」" },
+          { "role": "self", "text": "面倒だから外してしまうけれど、こうした人物ごとの分類が必要ではないのが、僕と君という二人の対話篇であるっていう現状による。これが前提条件になってるわけだ。" },
+          { "role": "other", "text": "了解。そしたら、どうする？ 複数人での対話可能性も担保してあげるかい？" },
+          { "role": "self", "text": "いや、まずはMVPを重視したい。だから、二人での対話篇を軸としたうえで、その補助が可能な仕方を考えよう。" },
+          { "role": "other", "text": "OK、そしたら、まずは始めてみる？" },
+          { "role": "self", "text": "ここまでで実装要件がまとまっていればね。読み直してみようか。" },
+          { "role": "self", "text": "……（読書中）……。" },
+          { "role": "self", "text": "あ、スマホ版のUIを考えてなかったや。" },
+          { "role": "other", "text": "スマホね〜。そしたら、うーん、あ、LINEにする？" },
+          { "role": "self", "text": "LINE？" },
+          { "role": "other", "text": "つまり、二人の間でのふきだし交換で互いに会話するっていうUIさ。とりわけ高校生にも馴染みがありそうではあるよ。" },
+          { "role": "self", "text": "LINEか、いいね。うん、やってみよう。" },
+          { "role": "self", "text": "改めて確認してみようか。現に僕は、この対話篇を通じた思考によって、普段書き出せないようなところまでも流ちょうに語れる現状がある気がする。これが、より多くの人の間でも生きるための選択肢の一つとして使えるようになるとすれば、たとえば、高校生が親や担任の先生に対して話しかける前に、自分の考えをまとめて言語化して持っておくってことが出来そうにも思える。つまるところ、自分の頭と声で考えたい人にとって、この対話篇を紡ぐことを容易にすることは、一つの支援になると僕は思っている。で、支援の為に、Enterキーによる改行を押すだけで、鍵括弧が生成されるようなアプリケーションが作れたらいいなぁと思っている。あ、これはPC UIの話だけどね。" },
+          { "role": "other", "text": "ちょっとごめん、思いついたけれど、文字の色やフォント、鍵括弧の種類とかって変えてみたかったりする？" },
+          { "role": "self", "text": "あー、まぁまずはやってみてから考えようか。僕らが何を机上の空論で考えるよりも、現実そのものが最高の回答を与えてくれるはずさ。" },
+          { "role": "other", "text": "OK、それじゃあそうしようか。" },
+          { "role": "self", "text": "うん、で、続けてみると、とりあえずPC UIではEnterを押すだけで鍵括弧の間にテキストカーソルが表示されるような構成を考えたくて、一方でスマホUIでは基本的にLINEに似たUIを考えていて、テキストボックスの中では自由に文字入力ができるけれど、それを「送信」した後には、自分のテキスト（つまるところ自分の声）と、相手のテキスト（相手の声）とが相互に会話しているような見た目が達成されてほしいと見ているわけ。" },
+          { "role": "self", "text": "で、さらに言うと、これが高校生にも共有されるようになってほしいから、HTMLとCSSを通じて実装して、それがGitHub Pagesから配信できる形が良いかなぁという風に思っているよ。" },
+          { "role": "self", "text": "もっとさらに言えば、僕の側でみんなの描いた思考を読める状況は構築したくないから、あくまで各自のブラウザ側でテキストデータが保持される状況にしたいかなぁ。テキストデータはいつでもダウンロード出来るようにもしたくて、さらにはダウンロードしたテキストデータを読み直すことで、元のサイトでは過去の自分の言語化（対話篇）がそのサイトのUIで改めて閲覧出来る状況までを整えたい。" },
+          { "role": "self", "text": "ざっと以上が、今回、いや今晩中に実装してみたい内容になるかなぁ。どうだろう。" },
+          { "role": "other", "text": "だいぶ書けているように見えるよ。少なくとも文字数で言えば割と十分な気がする。あとは、ChatGPTに渡してみて、どんな実装プランが練られるか否かにかかっていそうだね。" },
+          { "role": "self", "text": "ほんとだね。とりあえず渡してくるよ。" },
+          { "role": "other", "text": "いってらっさい。" }
+        ]
+      }
+    </script>
 
     <script id="my-polyphony-app">
       (() => {
@@ -1926,6 +2005,8 @@
         exportJsonButton: document.querySelector("#exportJsonButton"),
         exportTextButton: document.querySelector("#exportTextButton"),
         resetButton: document.querySelector("#resetButton"),
+        loadExampleButton: document.querySelector("#loadExampleButton"),
+        toolSpecificationExample: document.querySelector("#toolSpecificationExample"),
         saveStatus: document.querySelector("#saveStatus"),
         messageCount: document.querySelector("#messageCount"),
         desktopView: document.querySelector("#desktopView"),
@@ -2517,6 +2598,30 @@
           "text/plain;charset=utf-8",
         );
       }
+
+      function loadDialogueSource(
+        source,
+        {
+          confirmation = "現在の対話篇を、読み込んだ内容で置き換えますか？",
+          toastMessage = null,
+          focus = true,
+          scroll = true,
+        } = {},
+      ) {
+        const imported = parseDialogue(source);
+        const hasCurrentWork = state.messages.length > 0 || state.draft.trim().length > 0 || storageWriteBlocked;
+        if (hasCurrentWork && !window.confirm(confirmation)) {
+          return false;
+        }
+
+        state = imported;
+        storageWriteBlocked = false;
+        dismissNotice();
+        persistNow();
+        renderAll({ focus, scroll });
+        showToast(toastMessage ?? `${state.messages.length}件の発言を読み込みました`);
+        return true;
+      }
       
       async function importJson(event) {
         const [file] = event.currentTarget.files;
@@ -2526,23 +2631,32 @@
         }
       
         try {
-          const imported = parseDialogue(await file.text());
-          const hasCurrentWork = state.messages.length > 0 || state.draft.trim().length > 0 || storageWriteBlocked;
-          if (
-            hasCurrentWork &&
-            !window.confirm("現在の対話篇を、読み込んだ内容で置き換えますか？")
-          ) {
-            return;
-          }
-      
-          state = imported;
-          storageWriteBlocked = false;
-          dismissNotice();
-          persistNow();
-          renderAll({ focus: true, scroll: true });
-          showToast(`${state.messages.length}件の発言を読み込みました`);
+          loadDialogueSource(await file.text());
         } catch (error) {
           showNotice(`JSONを読み込めませんでした。${error.message}`, "error");
+          console.error(error);
+        }
+      }
+
+      function loadToolSpecificationExample() {
+        try {
+          const loaded = loadDialogueSource(elements.toolSpecificationExample.textContent, {
+            confirmation: "現在の対話篇を、制作者の具体例で置き換えますか？",
+            toastMessage: "具体例を読み込みました",
+            focus: false,
+            scroll: false,
+          });
+          if (!loaded) {
+            return;
+          }
+
+          window.requestAnimationFrame(() => {
+            elements.mobileFeed.scrollTop = 0;
+            window.scrollTo({ top: 0 });
+          });
+          announce("制作者の具体例を読み込みました。54件の発言があります。");
+        } catch (error) {
+          showNotice(`制作者の具体例を読み込めませんでした。${error.message}`, "error");
           console.error(error);
         }
       }
@@ -2611,6 +2725,7 @@
         elements.exportJsonButton.addEventListener("click", exportJson);
         elements.exportTextButton.addEventListener("click", exportText);
         elements.resetButton.addEventListener("click", resetDialogue);
+        elements.loadExampleButton.addEventListener("click", loadToolSpecificationExample);
         elements.dismissNoticeButton.addEventListener("click", dismissNotice);
       
         elements.editForm.addEventListener("submit", saveEdit);

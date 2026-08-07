@@ -30,6 +30,8 @@ const elements = {
   exportJsonButton: document.querySelector("#exportJsonButton"),
   exportTextButton: document.querySelector("#exportTextButton"),
   resetButton: document.querySelector("#resetButton"),
+  loadExampleButton: document.querySelector("#loadExampleButton"),
+  toolSpecificationExample: document.querySelector("#toolSpecificationExample"),
   saveStatus: document.querySelector("#saveStatus"),
   messageCount: document.querySelector("#messageCount"),
   desktopView: document.querySelector("#desktopView"),
@@ -622,6 +624,30 @@ function exportText() {
   );
 }
 
+function loadDialogueSource(
+  source,
+  {
+    confirmation = "現在の対話篇を、読み込んだ内容で置き換えますか？",
+    toastMessage = null,
+    focus = true,
+    scroll = true,
+  } = {},
+) {
+  const imported = parseDialogue(source);
+  const hasCurrentWork = state.messages.length > 0 || state.draft.trim().length > 0 || storageWriteBlocked;
+  if (hasCurrentWork && !window.confirm(confirmation)) {
+    return false;
+  }
+
+  state = imported;
+  storageWriteBlocked = false;
+  dismissNotice();
+  persistNow();
+  renderAll({ focus, scroll });
+  showToast(toastMessage ?? `${state.messages.length}件の発言を読み込みました`);
+  return true;
+}
+
 async function importJson(event) {
   const [file] = event.currentTarget.files;
   event.currentTarget.value = "";
@@ -630,23 +656,32 @@ async function importJson(event) {
   }
 
   try {
-    const imported = parseDialogue(await file.text());
-    const hasCurrentWork = state.messages.length > 0 || state.draft.trim().length > 0 || storageWriteBlocked;
-    if (
-      hasCurrentWork &&
-      !window.confirm("現在の対話篇を、読み込んだ内容で置き換えますか？")
-    ) {
+    loadDialogueSource(await file.text());
+  } catch (error) {
+    showNotice(`JSONを読み込めませんでした。${error.message}`, "error");
+    console.error(error);
+  }
+}
+
+function loadToolSpecificationExample() {
+  try {
+    const loaded = loadDialogueSource(elements.toolSpecificationExample.textContent, {
+      confirmation: "現在の対話篇を、仕様の具体例で置き換えますか？",
+      toastMessage: "仕様の具体例を読み込みました",
+      focus: false,
+      scroll: false,
+    });
+    if (!loaded) {
       return;
     }
 
-    state = imported;
-    storageWriteBlocked = false;
-    dismissNotice();
-    persistNow();
-    renderAll({ focus: true, scroll: true });
-    showToast(`${state.messages.length}件の発言を読み込みました`);
+    window.requestAnimationFrame(() => {
+      elements.mobileFeed.scrollTop = 0;
+      window.scrollTo({ top: 0 });
+    });
+    announce("仕様の具体例を読み込みました。54件の発言があります。");
   } catch (error) {
-    showNotice(`JSONを読み込めませんでした。${error.message}`, "error");
+    showNotice(`仕様の具体例を読み込めませんでした。${error.message}`, "error");
     console.error(error);
   }
 }
@@ -715,6 +750,7 @@ function bindEvents() {
   elements.exportJsonButton.addEventListener("click", exportJson);
   elements.exportTextButton.addEventListener("click", exportText);
   elements.resetButton.addEventListener("click", resetDialogue);
+  elements.loadExampleButton.addEventListener("click", loadToolSpecificationExample);
   elements.dismissNoticeButton.addEventListener("click", dismissNotice);
 
   elements.editForm.addEventListener("submit", saveEdit);

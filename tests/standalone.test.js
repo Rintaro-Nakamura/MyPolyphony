@@ -103,3 +103,27 @@ test("スマホ表示だけに全画面の開始・解除機能を備えてい�
   assert.match(html, /document\.addEventListener\("fullscreenchange", handleFullscreenChange\)/);
   assert.match(html, /setImmersiveMode\("fallback"\)/);
 });
+
+test("仕様の具体例を内蔵JSONから既存UIへ読み込める", async () => {
+  const html = await readFile(new URL("../index.html", import.meta.url), "utf8");
+  const exampleScript = html.match(
+    /<script id="toolSpecificationExample" type="application\/json">([\s\S]*?)<\/script>/,
+  );
+
+  assert.ok(exampleScript, "仕様の具体例JSONが見つかりません。");
+  const example = JSON.parse(exampleScript[1]);
+  assert.equal(example.format, "my-polyphony-dialogue");
+  assert.equal(example.version, 1);
+  assert.equal(example.messages.length, 54);
+  assert.match(
+    html,
+    /<button id="loadExampleButton"[\s\S]*?>\s*このツールの仕様の具体例を見る\s*<\/button>/,
+  );
+  assert.match(html, /loadDialogueSource\(elements\.toolSpecificationExample\.textContent/);
+  assert.match(
+    html,
+    /elements\.loadExampleButton\.addEventListener\("click", loadToolSpecificationExample\)/,
+  );
+  assert.doesNotMatch(exampleScript[1], /，|．/);
+  assert.doesNotMatch(html, /dialogue-example__details|example-utterance/);
+});

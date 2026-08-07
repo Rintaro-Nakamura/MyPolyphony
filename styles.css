@@ -379,6 +379,18 @@ textarea {
   box-shadow: 0 0 0 4px rgba(51, 118, 96, 0.12);
 }
 
+.intro__example-button {
+  margin-top: 1rem;
+  padding: 0;
+  color: var(--accent-dark);
+  border: 0;
+  border-bottom: 1px solid currentColor;
+  background: transparent;
+  font-size: 0.74rem;
+  font-weight: 800;
+  cursor: pointer;
+}
+
 .save-line {
   display: flex;
   justify-content: space-between;
