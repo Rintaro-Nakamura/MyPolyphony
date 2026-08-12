@@ -65,6 +65,18 @@ test("次の話者表示を送信ではない切替ボタンとして備えて�
   );
 });
 
+test("Ctrl + Alt + Mで次の話者を切り替えられる", async () => {
+  const html = await readFile(new URL("../index.html", import.meta.url), "utf8");
+
+  assert.doesNotMatch(html, /<kbd>Ctrl<\/kbd>＋<kbd>Alt<\/kbd>＋<kbd>M<\/kbd>/);
+  assert.match(html, /function handleRoleShortcut\(event\)/);
+  assert.match(html, /event\.ctrlKey &&\s*event\.altKey/);
+  assert.match(html, /event\.key\?\.toLowerCase\(\) === "m"/);
+  assert.match(html, /event\.repeat \|\|\s*event\.isComposing/);
+  assert.match(html, /elements\.editDialog\.open/);
+  assert.match(html, /document\.addEventListener\("keydown", handleRoleShortcut\)/);
+});
+
 test("文書上部に対話の開始日時を示す罫線付きヘッダーがある", async () => {
   const html = await readFile(new URL("../index.html", import.meta.url), "utf8");
   const paper = html.indexOf('class="paper"');
@@ -117,7 +129,7 @@ test("仕様の具体例を内蔵JSONから既存UIへ読み込める", async ()
   assert.equal(example.messages.length, 54);
   assert.match(
     html,
-    /<button id="loadExampleButton"[\s\S]*?>\s*このツールの仕様の具体例を見る\s*<\/button>/,
+    /<button id="loadExampleButton"[\s\S]*?>\s*制作者の具体例を見る\s*<\/button>/,
   );
   assert.match(html, /loadDialogueSource\(elements\.toolSpecificationExample\.textContent/);
   assert.match(

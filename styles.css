@@ -1046,7 +1046,8 @@ html.mobile-immersive .phone-header__fullscreen {
 }
 
 .page-footer p {
-  margin: 0;
+  margin: 0 0 0 auto;
+  text-align: right;
 }
 
 .edit-dialog {
