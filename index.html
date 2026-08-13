@@ -2418,6 +2418,29 @@
         focusComposer();
         announce(`次の話者を${roleLabel(state.nextRole)}に切り替えました。発言後は自動で交替します。`);
       }
+
+      function handleRoleShortcut(event) {
+        const isShortcut =
+          event.ctrlKey &&
+          event.altKey &&
+          !event.shiftKey &&
+          !event.metaKey &&
+          event.key?.toLowerCase() === "m";
+
+        if (
+          !isShortcut ||
+          event.defaultPrevented ||
+          event.repeat ||
+          event.isComposing ||
+          event.keyCode === 229 ||
+          elements.editDialog.open
+        ) {
+          return;
+        }
+
+        event.preventDefault();
+        handleRoleToggle();
+      }
       
       function renderAll({ focus = false, scroll = false } = {}) {
         renderNoteHeader();
@@ -2686,6 +2709,8 @@
       }
       
       function bindEvents() {
+        document.addEventListener("keydown", handleRoleShortcut);
+
         elements.modeButtons.forEach((button) => {
           button.addEventListener("click", () => setMode(button.dataset.mode, { manual: true, focus: true }));
         });

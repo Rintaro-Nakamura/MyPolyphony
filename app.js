@@ -444,6 +444,29 @@ function handleRoleToggle() {
   announce(`次の話者を${roleLabel(state.nextRole)}に切り替えました。発言後は自動で交替します。`);
 }
 
+function handleRoleShortcut(event) {
+  const isShortcut =
+    event.ctrlKey &&
+    event.altKey &&
+    !event.shiftKey &&
+    !event.metaKey &&
+    event.key?.toLowerCase() === "m";
+
+  if (
+    !isShortcut ||
+    event.defaultPrevented ||
+    event.repeat ||
+    event.isComposing ||
+    event.keyCode === 229 ||
+    elements.editDialog.open
+  ) {
+    return;
+  }
+
+  event.preventDefault();
+  handleRoleToggle();
+}
+
 function renderAll({ focus = false, scroll = false } = {}) {
   renderNoteHeader();
   renderMessages();
@@ -666,8 +689,8 @@ async function importJson(event) {
 function loadToolSpecificationExample() {
   try {
     const loaded = loadDialogueSource(elements.toolSpecificationExample.textContent, {
-      confirmation: "現在の対話篇を、仕様の具体例で置き換えますか？",
-      toastMessage: "仕様の具体例を読み込みました",
+      confirmation: "現在の対話篇を、制作者の具体例で置き換えますか？",
+      toastMessage: "具体例を読み込みました",
       focus: false,
       scroll: false,
     });
@@ -679,9 +702,9 @@ function loadToolSpecificationExample() {
       elements.mobileFeed.scrollTop = 0;
       window.scrollTo({ top: 0 });
     });
-    announce("仕様の具体例を読み込みました。54件の発言があります。");
+    announce("制作者の具体例を読み込みました。54件の発言があります。");
   } catch (error) {
-    showNotice(`仕様の具体例を読み込めませんでした。${error.message}`, "error");
+    showNotice(`制作者の具体例を読み込めませんでした。${error.message}`, "error");
     console.error(error);
   }
 }
@@ -711,6 +734,8 @@ function resetDialogue() {
 }
 
 function bindEvents() {
+  document.addEventListener("keydown", handleRoleShortcut);
+
   elements.modeButtons.forEach((button) => {
     button.addEventListener("click", () => setMode(button.dataset.mode, { manual: true, focus: true }));
   });
