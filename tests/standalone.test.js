@@ -65,6 +65,40 @@ test("次の話者表示を送信ではない切替ボタンとして備えて�
   );
 });
 
+test("設定に対話篇の入出力と書体選択をまとめている", async () => {
+  const html = await readFile(new URL("../index.html", import.meta.url), "utf8");
+  const settingsStart = html.indexOf('id="settingsMenu"');
+  const settingsEnd = html.indexOf("</details>", settingsStart);
+  const settings = html.slice(settingsStart, settingsEnd);
+
+  assert.ok(settingsStart >= 0 && settingsEnd > settingsStart);
+  assert.match(settings, /<summary class="tool-button">設定<\/summary>/);
+  assert.match(settings, /id="importButton"/);
+  assert.match(settings, /id="exportJsonButton"/);
+  assert.match(settings, /id="exportTextButton"/);
+  assert.match(settings, /id="fontSelect"/);
+  assert.ok(settings.indexOf('id="importButton"') < settings.indexOf('id="fontSelect"'));
+  assert.match(settings, /<option value="mincho">明朝（現在の書体）<\/option>/);
+  assert.match(settings, /<option value="gothic">ゴシック<\/option>/);
+  assert.match(settings, /<option value="noto-sans">Noto Sans JP 優先<\/option>/);
+  assert.doesNotMatch(html, /id="exportMenu"|class="export-menu/);
+});
+
+test("書体設定を対話データと分けて端末内へ保存する", async () => {
+  const html = await readFile(new URL("../index.html", import.meta.url), "utf8");
+
+  assert.match(html, /const FONT_STORAGE_KEY = "my-polyphony:v1:font"/);
+  assert.match(html, /const DEFAULT_FONT_PREFERENCE = "mincho"/);
+  assert.match(html, /Object\.hasOwn\(FONT_PREFERENCE_LABELS, value\)/);
+  assert.match(html, /localStorage\.getItem\(FONT_STORAGE_KEY\)/);
+  assert.match(html, /localStorage\.setItem\(FONT_STORAGE_KEY, fontPreference\)/);
+  assert.match(html, /document\.documentElement\.dataset\.dialogueFont = fontPreference/);
+  assert.match(html, /:root\[data-dialogue-font="gothic"\]/);
+  assert.match(html, /:root\[data-dialogue-font="noto-sans"\]/);
+  assert.match(html, /\.mobile-composer textarea[\s\S]*?font-family:\s*var\(--font-dialogue\)/);
+  assert.doesNotMatch(html, /@font-face|fonts\.googleapis\.com|fonts\.gstatic\.com/);
+});
+
 test("Ctrl + Alt + Mで次の話者を切り替えられる", async () => {
   const html = await readFile(new URL("../index.html", import.meta.url), "utf8");
 
@@ -138,4 +172,29 @@ test("仕様の具体例を内蔵JSONから既存UIへ読み込める", async ()
   );
   assert.doesNotMatch(exampleScript[1], /，|．/);
   assert.doesNotMatch(html, /dialogue-example__details|example-utterance/);
+});
+
+test("単一HTMLの埋め込みCSSとJavaScriptを開発用ファイルに同期している", async () => {
+  const [html, styles, model, app] = await Promise.all([
+    readFile(new URL("../index.html", import.meta.url), "utf8"),
+    readFile(new URL("../styles.css", import.meta.url), "utf8"),
+    readFile(new URL("../model.js", import.meta.url), "utf8"),
+    readFile(new URL("../app.js", import.meta.url), "utf8"),
+  ]);
+  const inlineStyles = html.match(
+    /<style\s+id=["']my-polyphony-styles["']>([\s\S]*?)<\/style>/i,
+  );
+  const inlineApp = html.match(
+    /<script\s+id=["']my-polyphony-app["']>([\s\S]*?)<\/script>/i,
+  );
+  const normalize = (source) => source.replace(/\r\n?/g, "\n").trim();
+  const removeEmbeddingIndent = (source) => source.replace(/^ {6}/gm, "");
+
+  assert.ok(inlineStyles);
+  assert.ok(inlineApp);
+  assert.equal(normalize(removeEmbeddingIndent(inlineStyles[1])), normalize(styles));
+  assert.equal(
+    normalize(removeEmbeddingIndent(inlineApp[1])),
+    normalize(`${model.trimEnd()}\n\n${app.trimStart()}`),
+  );
 });
