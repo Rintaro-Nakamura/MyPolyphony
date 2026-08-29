@@ -88,7 +88,18 @@ test("端末内保存は発言、下書き、次話者、開始日時を復元�
     startedAt: "2026-08-07T12:34:00.000Z",
   };
 
-  const restored = parseStoredState(serializeStoredState(state));
+  const serialized = serializeStoredState(state);
+  const storedData = JSON.parse(serialized);
+  const restored = parseStoredState(serialized);
+
+  assert.deepEqual(Object.keys(storedData).sort(), [
+    "draft",
+    "messages",
+    "nextRole",
+    "startedAt",
+    "version",
+  ]);
+  assert.equal("font" in storedData, false);
   assert.deepEqual(restored, {
     messages: [{ id: "m1", role: ROLE_SELF, text: "保存する\n本文" }],
     draft: "入力\n途中",
@@ -147,8 +158,12 @@ test("JSONは話者、順序、改行を保って往復する", () => {
     { id: "m2", role: ROLE_OTHER, text: "返事" },
   ];
   const json = serializeDialogue(messages, new Date("2026-08-06T12:00:00.000Z"));
+  const exported = JSON.parse(json);
   const startedAt = new Date("2026-08-07T08:09:00.000Z");
   const restored = parseDialogue(json, ids("r1", "r2"), startedAt);
+
+  assert.deepEqual(Object.keys(exported).sort(), ["exportedAt", "format", "messages", "version"]);
+  assert.equal("font" in exported, false);
 
   assert.deepEqual(
     restored.messages,

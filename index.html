@@ -1,5 +1,5 @@
 <!doctype html>
-<html lang="ja">
+<html lang="ja" data-dialogue-font="mincho">
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
@@ -30,6 +30,17 @@
         --shadow: 0 24px 70px rgba(51, 43, 31, 0.12);
         --font-sans: Inter, "Hiragino Sans", "Yu Gothic UI", "Yu Gothic", Meiryo, sans-serif;
         --font-serif: "Yu Mincho", "Hiragino Mincho ProN", "BIZ UDPMincho", serif;
+        --font-dialogue: "Yu Mincho", "Hiragino Mincho ProN", "BIZ UDPMincho", serif;
+      }
+
+      :root[data-dialogue-font="gothic"] {
+        --font-dialogue: "Hiragino Sans", "Hiragino Kaku Gothic ProN", "Yu Gothic", "Yu Gothic UI",
+          "BIZ UDPGothic", Meiryo, sans-serif;
+      }
+
+      :root[data-dialogue-font="noto-sans"] {
+        --font-dialogue: "Noto Sans JP", "Noto Sans CJK JP", "Hiragino Sans", "Yu Gothic", Meiryo,
+          sans-serif;
       }
       
       *,
@@ -57,6 +68,7 @@
       }
       
       button,
+      select,
       textarea,
       summary {
         font: inherit;
@@ -226,44 +238,68 @@
         color: var(--ink-soft);
       }
       
-      .export-menu {
+      .settings-menu {
         position: relative;
       }
       
-      .export-menu > summary {
+      .settings-menu > summary {
         display: flex;
         align-items: center;
         list-style: none;
       }
       
-      .export-menu > summary::-webkit-details-marker {
+      .settings-menu > summary::-webkit-details-marker {
         display: none;
       }
       
-      .export-menu > summary::after {
+      .settings-menu > summary::after {
         margin-left: 0.35rem;
         content: "⌄";
         font-size: 0.8rem;
       }
       
-      .export-menu[open] > summary {
+      .settings-menu[open] > summary {
         background: rgba(31, 37, 51, 0.08);
       }
       
-      .export-menu__panel {
+      .settings-menu__panel {
         position: absolute;
         z-index: 70;
         top: calc(100% + 0.6rem);
         right: 0;
-        width: 220px;
-        padding: 0.45rem;
+        display: grid;
+        width: min(320px, calc(100vw - 1.5rem));
+        max-height: calc(100dvh - 6.5rem);
+        padding: 0.7rem;
+        gap: 0.65rem;
+        overflow-y: auto;
         border: 1px solid var(--line);
         border-radius: 0.9rem;
         background: var(--paper);
         box-shadow: 0 16px 45px rgba(31, 37, 51, 0.16);
       }
       
-      .export-menu__panel button {
+      .settings-menu__section {
+        display: grid;
+        padding: 0.1rem;
+        gap: 0.35rem;
+      }
+
+      .settings-menu__section + .settings-menu__section {
+        padding-top: 0.75rem;
+        border-top: 1px solid var(--line);
+      }
+
+      .settings-menu__heading {
+        margin: 0;
+        padding: 0 0.35rem 0.15rem;
+        color: var(--ink-soft);
+        font-size: 0.68rem;
+        font-weight: 800;
+        letter-spacing: 0.08em;
+      }
+
+      .settings-menu__panel button {
         display: grid;
         width: 100%;
         padding: 0.7rem 0.75rem;
@@ -274,25 +310,50 @@
         cursor: pointer;
       }
       
-      .export-menu__panel button:hover {
+      .settings-menu__panel button:hover {
         background: var(--voice-pale);
       }
       
-      .export-menu__panel button:disabled {
+      .settings-menu__panel button:disabled {
         opacity: 0.42;
         cursor: not-allowed;
       }
       
-      .export-menu__panel strong {
+      .settings-menu__panel strong,
+      .settings-menu__font-label {
         font-size: 0.78rem;
         letter-spacing: 0.08em;
       }
       
-      .export-menu__panel span {
+      .settings-menu__panel button span {
         color: var(--ink-soft);
         font-size: 0.72rem;
       }
       
+      .settings-menu__font-label {
+        padding: 0 0.35rem;
+        font-weight: 800;
+      }
+
+      .settings-menu__select {
+        width: 100%;
+        min-height: 42px;
+        padding: 0.55rem 2.2rem 0.55rem 0.7rem;
+        color: var(--ink);
+        border: 1px solid var(--line-strong);
+        border-radius: 0.65rem;
+        background: white;
+        cursor: pointer;
+      }
+
+      .settings-menu__hint {
+        margin: 0;
+        padding: 0 0.35rem;
+        color: var(--ink-soft);
+        font-size: 0.68rem;
+        line-height: 1.65;
+      }
+
       .notice {
         position: relative;
         z-index: 40;
@@ -481,7 +542,7 @@
       }
 
       .dialogue-note-header time {
-        font-family: var(--font-serif);
+        font-family: var(--font-dialogue);
         font-size: 0.9rem;
         font-weight: 500;
         letter-spacing: 0.08em;
@@ -495,7 +556,7 @@
         justify-content: center;
         min-height: 200px;
         color: #8b887f;
-        font-family: var(--font-serif);
+        font-family: var(--font-dialogue);
         text-align: center;
       }
 
@@ -546,7 +607,7 @@
       .desktop-message__content {
         min-width: 0;
         margin: 0;
-        font-family: var(--font-serif);
+        font-family: var(--font-dialogue);
         font-size: clamp(1rem, 1.7vw, 1.17rem);
         line-height: 2;
         overflow-wrap: anywhere;
@@ -650,7 +711,7 @@
       }
       
       .quote-input__mark {
-        font-family: var(--font-serif);
+        font-family: var(--font-dialogue);
         font-size: 1.65rem;
         line-height: 1.6;
       }
@@ -669,7 +730,7 @@
         border: 0;
         outline: 0;
         background: transparent;
-        font-family: var(--font-serif);
+        font-family: var(--font-dialogue);
         font-size: clamp(1rem, 1.7vw, 1.17rem);
         line-height: 1.75;
       }
@@ -870,7 +931,7 @@
       }
       
       .mobile-empty p {
-        font-family: var(--font-serif);
+        font-family: var(--font-dialogue);
         font-size: 0.88rem;
       }
       
@@ -919,7 +980,7 @@
       
       .mobile-message__bubble p {
         margin: 0;
-        font-family: var(--font-serif);
+        font-family: var(--font-dialogue);
         font-size: 0.94rem;
         line-height: 1.7;
         overflow-wrap: anywhere;
@@ -959,6 +1020,7 @@
         border-radius: 1.2rem;
         outline: 0;
         background: #f5f6f8;
+        font-family: var(--font-dialogue);
         font-size: 0.9rem;
         line-height: 1.45;
       }
@@ -1136,7 +1198,7 @@
         border-radius: 0.7rem;
         outline: 0;
         background: white;
-        font-family: var(--font-serif);
+        font-family: var(--font-dialogue);
         font-size: 1rem;
         line-height: 1.8;
       }
@@ -1211,6 +1273,7 @@
       @media (max-width: 767px) {
         .site-header {
           position: static;
+          backdrop-filter: none;
         }
       
         .site-header__inner {
@@ -1231,7 +1294,7 @@
       
         .toolbar {
           display: grid;
-          grid-template-columns: auto repeat(3, max-content);
+          grid-template-columns: auto repeat(2, max-content);
           justify-content: center;
           width: 100%;
           gap: 0.2rem;
@@ -1253,13 +1316,14 @@
           line-height: 1.2;
         }
       
-        .export-menu__panel {
+        .settings-menu__panel {
           position: fixed;
           top: auto;
           right: 0.75rem;
           bottom: 0.75rem;
           left: 0.75rem;
           width: auto;
+          max-height: calc(100dvh - 1.5rem);
         }
       
         .page-shell {
@@ -1366,7 +1430,6 @@
           transition-duration: 0.01ms !important;
         }
       }
-      
     </style>
   </head>
   <body>
@@ -1392,19 +1455,37 @@
             </button>
           </div>
 
-          <button id="importButton" class="tool-button" type="button">読み込む</button>
+          <details id="settingsMenu" class="settings-menu">
+            <summary class="tool-button">設定</summary>
+            <div class="settings-menu__panel">
+              <section class="settings-menu__section" aria-labelledby="dialogueSettingsTitle">
+                <h2 id="dialogueSettingsTitle" class="settings-menu__heading">対話篇</h2>
+                <button id="importButton" type="button">
+                  <strong>JSONを読み込む</strong>
+                  <span>保存した対話篇の続きを開く</span>
+                </button>
+                <button id="exportJsonButton" type="button">
+                  <strong>JSONで書き出す</strong>
+                  <span>あとで続きを書く</span>
+                </button>
+                <button id="exportTextButton" type="button">
+                  <strong>TXTで書き出す</strong>
+                  <span>文章として読む</span>
+                </button>
+              </section>
 
-          <details id="exportMenu" class="export-menu">
-            <summary class="tool-button">書き出す</summary>
-            <div class="export-menu__panel">
-              <button id="exportJsonButton" type="button">
-                <strong>JSON</strong>
-                <span>あとで続きを書く</span>
-              </button>
-              <button id="exportTextButton" type="button">
-                <strong>TXT</strong>
-                <span>文章として読む</span>
-              </button>
+              <section class="settings-menu__section" aria-labelledby="fontSettingsTitle">
+                <h2 id="fontSettingsTitle" class="settings-menu__heading">文字</h2>
+                <label class="settings-menu__font-label" for="fontSelect">対話篇の書体</label>
+                <select id="fontSelect" class="settings-menu__select" aria-describedby="fontSettingsHint">
+                  <option value="mincho">明朝（現在の書体）</option>
+                  <option value="gothic">ゴシック</option>
+                  <option value="noto-sans">Noto Sans JP 優先</option>
+                </select>
+                <p id="fontSettingsHint" class="settings-menu__hint">
+                  このブラウザに保存され、JSONには含まれません。Noto Sans JPが端末にない場合は、ゴシック体で表示します。
+                </p>
+              </section>
             </div>
           </details>
 
@@ -1994,6 +2075,14 @@
         updateDraft,
       } = globalThis.MyPolyphonyModel;
       
+      const FONT_STORAGE_KEY = "my-polyphony:v1:font";
+      const DEFAULT_FONT_PREFERENCE = "mincho";
+      const FONT_PREFERENCE_LABELS = Object.freeze({
+        mincho: "明朝",
+        gothic: "ゴシック",
+        "noto-sans": "Noto Sans JP 優先",
+      });
+
       const elements = {
         notice: document.querySelector("#notice"),
         noticeText: document.querySelector("#noticeText"),
@@ -2001,7 +2090,8 @@
         modeButtons: [...document.querySelectorAll(".mode-button")],
         importButton: document.querySelector("#importButton"),
         importInput: document.querySelector("#importInput"),
-        exportMenu: document.querySelector("#exportMenu"),
+        settingsMenu: document.querySelector("#settingsMenu"),
+        fontSelect: document.querySelector("#fontSelect"),
         exportJsonButton: document.querySelector("#exportJsonButton"),
         exportTextButton: document.querySelector("#exportTextButton"),
         resetButton: document.querySelector("#resetButton"),
@@ -2037,6 +2127,7 @@
       const mobileMedia = window.matchMedia("(max-width: 767px)");
       let state = createInitialState();
       let viewMode = mobileMedia.matches ? "mobile" : "desktop";
+      let fontPreference = DEFAULT_FONT_PREFERENCE;
       let hasManualMode = false;
       let editingId = null;
       let saveTimer = null;
@@ -2055,6 +2146,38 @@
         return `${date.getMonth() + 1} 月 ${date.getDate()} 日（${weekday}）　${date.getHours()} 時 ${minute} 分`;
       }
       
+      function normalizeFontPreference(value) {
+        return Object.hasOwn(FONT_PREFERENCE_LABELS, value) ? value : DEFAULT_FONT_PREFERENCE;
+      }
+
+      function applyFontPreference(value) {
+        fontPreference = normalizeFontPreference(value);
+        document.documentElement.dataset.dialogueFont = fontPreference;
+        elements.fontSelect.value = fontPreference;
+      }
+
+      function persistFontPreference() {
+        try {
+          localStorage.setItem(FONT_STORAGE_KEY, fontPreference);
+          return true;
+        } catch (error) {
+          showNotice(
+            "書体の設定をこのブラウザに保存できませんでした。現在のページでは選んだ書体を利用できます。",
+            "warning",
+          );
+          console.warn(error);
+          return false;
+        }
+      }
+
+      function changeFontPreference(event) {
+        applyFontPreference(event.currentTarget.value);
+        const persisted = persistFontPreference();
+        const label = FONT_PREFERENCE_LABELS[fontPreference];
+        showToast(persisted ? `書体を${label}に変更しました` : `書体を${label}に変更しました（保存なし）`);
+        announce(`対話篇の書体を${label}に変更しました。`);
+      }
+
       function loadInitialState() {
         try {
           const stored = localStorage.getItem(STORAGE_KEY);
@@ -2082,6 +2205,13 @@
           }
         } catch (error) {
           console.warn("表示モードの設定を読み込めませんでした。", error);
+        }
+
+        applyFontPreference(DEFAULT_FONT_PREFERENCE);
+        try {
+          applyFontPreference(localStorage.getItem(FONT_STORAGE_KEY));
+        } catch (error) {
+          console.warn("書体の設定を読み込めませんでした。", error);
         }
       }
       
@@ -2601,7 +2731,7 @@
         } else {
           showToast("対話篇を書き出しました");
         }
-        elements.exportMenu.open = false;
+        elements.settingsMenu.open = false;
       }
       
       function exportJson() {
@@ -2654,7 +2784,10 @@
         }
       
         try {
-          loadDialogueSource(await file.text());
+          const loaded = loadDialogueSource(await file.text());
+          if (loaded) {
+            elements.settingsMenu.open = false;
+          }
         } catch (error) {
           showNotice(`JSONを読み込めませんでした。${error.message}`, "error");
           console.error(error);
@@ -2710,6 +2843,17 @@
       
       function bindEvents() {
         document.addEventListener("keydown", handleRoleShortcut);
+        document.addEventListener("keydown", (event) => {
+          if (event.key === "Escape" && elements.settingsMenu.open) {
+            elements.settingsMenu.open = false;
+            elements.settingsMenu.querySelector("summary").focus();
+          }
+        });
+        document.addEventListener("click", (event) => {
+          if (elements.settingsMenu.open && !elements.settingsMenu.contains(event.target)) {
+            elements.settingsMenu.open = false;
+          }
+        });
 
         elements.modeButtons.forEach((button) => {
           button.addEventListener("click", () => setMode(button.dataset.mode, { manual: true, focus: true }));
@@ -2749,6 +2893,7 @@
         elements.importInput.addEventListener("change", importJson);
         elements.exportJsonButton.addEventListener("click", exportJson);
         elements.exportTextButton.addEventListener("click", exportText);
+        elements.fontSelect.addEventListener("change", changeFontPreference);
         elements.resetButton.addEventListener("click", resetDialogue);
         elements.loadExampleButton.addEventListener("click", loadToolSpecificationExample);
         elements.dismissNoticeButton.addEventListener("click", dismissNotice);
@@ -2783,7 +2928,6 @@
       loadInitialState();
       renderAll();
       })();
-      
     </script>
   </body>
 </html>

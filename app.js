@@ -19,6 +19,14 @@ const {
   updateDraft,
 } = globalThis.MyPolyphonyModel;
 
+const FONT_STORAGE_KEY = "my-polyphony:v1:font";
+const DEFAULT_FONT_PREFERENCE = "mincho";
+const FONT_PREFERENCE_LABELS = Object.freeze({
+  mincho: "明朝",
+  gothic: "ゴシック",
+  "noto-sans": "Noto Sans JP 優先",
+});
+
 const elements = {
   notice: document.querySelector("#notice"),
   noticeText: document.querySelector("#noticeText"),
@@ -26,7 +34,8 @@ const elements = {
   modeButtons: [...document.querySelectorAll(".mode-button")],
   importButton: document.querySelector("#importButton"),
   importInput: document.querySelector("#importInput"),
-  exportMenu: document.querySelector("#exportMenu"),
+  settingsMenu: document.querySelector("#settingsMenu"),
+  fontSelect: document.querySelector("#fontSelect"),
   exportJsonButton: document.querySelector("#exportJsonButton"),
   exportTextButton: document.querySelector("#exportTextButton"),
   resetButton: document.querySelector("#resetButton"),
@@ -62,6 +71,7 @@ const elements = {
 const mobileMedia = window.matchMedia("(max-width: 767px)");
 let state = createInitialState();
 let viewMode = mobileMedia.matches ? "mobile" : "desktop";
+let fontPreference = DEFAULT_FONT_PREFERENCE;
 let hasManualMode = false;
 let editingId = null;
 let saveTimer = null;
@@ -78,6 +88,38 @@ function formatDialogueStartedAt(value) {
   const weekday = ["日", "月", "火", "水", "木", "金", "土"][date.getDay()];
   const minute = String(date.getMinutes()).padStart(2, "0");
   return `${date.getMonth() + 1} 月 ${date.getDate()} 日（${weekday}）　${date.getHours()} 時 ${minute} 分`;
+}
+
+function normalizeFontPreference(value) {
+  return Object.hasOwn(FONT_PREFERENCE_LABELS, value) ? value : DEFAULT_FONT_PREFERENCE;
+}
+
+function applyFontPreference(value) {
+  fontPreference = normalizeFontPreference(value);
+  document.documentElement.dataset.dialogueFont = fontPreference;
+  elements.fontSelect.value = fontPreference;
+}
+
+function persistFontPreference() {
+  try {
+    localStorage.setItem(FONT_STORAGE_KEY, fontPreference);
+    return true;
+  } catch (error) {
+    showNotice(
+      "書体の設定をこのブラウザに保存できませんでした。現在のページでは選んだ書体を利用できます。",
+      "warning",
+    );
+    console.warn(error);
+    return false;
+  }
+}
+
+function changeFontPreference(event) {
+  applyFontPreference(event.currentTarget.value);
+  const persisted = persistFontPreference();
+  const label = FONT_PREFERENCE_LABELS[fontPreference];
+  showToast(persisted ? `書体を${label}に変更しました` : `書体を${label}に変更しました（保存なし）`);
+  announce(`対話篇の書体を${label}に変更しました。`);
 }
 
 function loadInitialState() {
@@ -107,6 +149,13 @@ function loadInitialState() {
     }
   } catch (error) {
     console.warn("表示モードの設定を読み込めませんでした。", error);
+  }
+
+  applyFontPreference(DEFAULT_FONT_PREFERENCE);
+  try {
+    applyFontPreference(localStorage.getItem(FONT_STORAGE_KEY));
+  } catch (error) {
+    console.warn("書体の設定を読み込めませんでした。", error);
   }
 }
 
@@ -626,7 +675,7 @@ function downloadFile(contents, filename, type) {
   } else {
     showToast("対話篇を書き出しました");
   }
-  elements.exportMenu.open = false;
+  elements.settingsMenu.open = false;
 }
 
 function exportJson() {
@@ -679,7 +728,10 @@ async function importJson(event) {
   }
 
   try {
-    loadDialogueSource(await file.text());
+    const loaded = loadDialogueSource(await file.text());
+    if (loaded) {
+      elements.settingsMenu.open = false;
+    }
   } catch (error) {
     showNotice(`JSONを読み込めませんでした。${error.message}`, "error");
     console.error(error);
@@ -735,6 +787,17 @@ function resetDialogue() {
 
 function bindEvents() {
   document.addEventListener("keydown", handleRoleShortcut);
+  document.addEventListener("keydown", (event) => {
+    if (event.key === "Escape" && elements.settingsMenu.open) {
+      elements.settingsMenu.open = false;
+      elements.settingsMenu.querySelector("summary").focus();
+    }
+  });
+  document.addEventListener("click", (event) => {
+    if (elements.settingsMenu.open && !elements.settingsMenu.contains(event.target)) {
+      elements.settingsMenu.open = false;
+    }
+  });
 
   elements.modeButtons.forEach((button) => {
     button.addEventListener("click", () => setMode(button.dataset.mode, { manual: true, focus: true }));
@@ -774,6 +837,7 @@ function bindEvents() {
   elements.importInput.addEventListener("change", importJson);
   elements.exportJsonButton.addEventListener("click", exportJson);
   elements.exportTextButton.addEventListener("click", exportText);
+  elements.fontSelect.addEventListener("change", changeFontPreference);
   elements.resetButton.addEventListener("click", resetDialogue);
   elements.loadExampleButton.addEventListener("click", loadToolSpecificationExample);
   elements.dismissNoticeButton.addEventListener("click", dismissNotice);
