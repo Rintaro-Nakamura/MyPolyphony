@@ -78,7 +78,7 @@ test("設定に対話篇の入出力と書体選択をまとめている", async
   assert.match(settings, /id="exportTextButton"/);
   assert.match(settings, /id="fontSelect"/);
   assert.ok(settings.indexOf('id="importButton"') < settings.indexOf('id="fontSelect"'));
-  assert.match(settings, /<option value="mincho">明朝（現在の書体）<\/option>/);
+  assert.match(settings, /<option value="mincho">明朝（デフォルトの書体）<\/option>/);
   assert.match(settings, /<option value="gothic">ゴシック<\/option>/);
   assert.match(settings, /<option value="noto-sans">Noto Sans JP 優先<\/option>/);
   assert.doesNotMatch(html, /id="exportMenu"|class="export-menu/);
@@ -90,13 +90,33 @@ test("書体設定を対話データと分けて端末内へ保存する", async
   assert.match(html, /const FONT_STORAGE_KEY = "my-polyphony:v1:font"/);
   assert.match(html, /const DEFAULT_FONT_PREFERENCE = "mincho"/);
   assert.match(html, /Object\.hasOwn\(FONT_PREFERENCE_LABELS, value\)/);
-  assert.match(html, /localStorage\.getItem\(FONT_STORAGE_KEY\)/);
-  assert.match(html, /localStorage\.setItem\(FONT_STORAGE_KEY, fontPreference\)/);
+  assert.match(html, /readStorage\(FONT_STORAGE_KEY\)/);
+  assert.match(html, /writeStorage\(FONT_STORAGE_KEY, fontPreference\)/);
   assert.match(html, /document\.documentElement\.dataset\.dialogueFont = fontPreference/);
   assert.match(html, /:root\[data-dialogue-font="gothic"\]/);
   assert.match(html, /:root\[data-dialogue-font="noto-sans"\]/);
   assert.match(html, /\.mobile-composer textarea[\s\S]*?font-family:\s*var\(--font-dialogue\)/);
   assert.doesNotMatch(html, /@font-face|fonts\.googleapis\.com|fonts\.gstatic\.com/);
+});
+
+test("文書表示の密度を個人用CSS変数から調整できる", async () => {
+  const html = await readFile(new URL("../index.html", import.meta.url), "utf8");
+  const tuning = html.match(
+    /<style\s+id=["']my-polyphony-local-tuning["']>([\s\S]*?)<\/style>/i,
+  );
+
+  assert.ok(tuning, "個人用の表示調整欄が見つかりません。");
+  assert.match(tuning[1], /--desktop-self-to-self-gap:\s*0\.8rem/);
+  assert.match(tuning[1], /--desktop-content-font-size:/);
+  assert.match(tuning[1], /--desktop-content-line-height:/);
+  assert.match(
+    html,
+    /\.desktop-message--self\s*\+\s*\.desktop-message--self\s*\{[\s\S]*?var\(--desktop-self-to-self-gap\)/,
+  );
+  assert.match(
+    html,
+    /\.desktop-message__content\s*\{[\s\S]*?font-size:\s*var\(--desktop-content-font-size\);[\s\S]*?line-height:\s*var\(--desktop-content-line-height\);/,
+  );
 });
 
 test("Ctrl + Alt + Mで次の話者を切り替えられる", async () => {
@@ -175,10 +195,13 @@ test("仕様の具体例を内蔵JSONから既存UIへ読み込める", async ()
 });
 
 test("単一HTMLの埋め込みCSSとJavaScriptを開発用ファイルに同期している", async () => {
-  const [html, styles, model, app] = await Promise.all([
+  const [html, styles, model, preferences, storage, view, app] = await Promise.all([
     readFile(new URL("../index.html", import.meta.url), "utf8"),
     readFile(new URL("../styles.css", import.meta.url), "utf8"),
     readFile(new URL("../model.js", import.meta.url), "utf8"),
+    readFile(new URL("../preferences.js", import.meta.url), "utf8"),
+    readFile(new URL("../storage.js", import.meta.url), "utf8"),
+    readFile(new URL("../view.js", import.meta.url), "utf8"),
     readFile(new URL("../app.js", import.meta.url), "utf8"),
   ]);
   const inlineStyles = html.match(
@@ -195,6 +218,23 @@ test("単一HTMLの埋め込みCSSとJavaScriptを開発用ファイルに同期
   assert.equal(normalize(removeEmbeddingIndent(inlineStyles[1])), normalize(styles));
   assert.equal(
     normalize(removeEmbeddingIndent(inlineApp[1])),
-    normalize(`${model.trimEnd()}\n\n${app.trimStart()}`),
+    normalize(
+      `${model.trimEnd()}\n\n${preferences.trim()}\n\n${storage.trim()}\n\n${view.trim()}\n\n${app.trimStart()}`,
+    ),
   );
+});
+
+test("開発用ファイルから単一HTMLを生成するコマンドを備えている", async () => {
+  const [packageSource, buildSource] = await Promise.all([
+    readFile(new URL("../package.json", import.meta.url), "utf8"),
+    readFile(new URL("../scripts/build-standalone.mjs", import.meta.url), "utf8"),
+  ]);
+  const packageJson = JSON.parse(packageSource);
+
+  assert.equal(packageJson.scripts.build, "node scripts/build-standalone.mjs");
+  assert.match(packageJson.scripts["check:standalone"], /--check/);
+  assert.match(buildSource, /readProjectFile\("styles\.css"\)/);
+  assert.match(buildSource, /readProjectFile\("preferences\.js"\)/);
+  assert.match(buildSource, /readProjectFile\("storage\.js"\)/);
+  assert.match(buildSource, /readProjectFile\("view\.js"\)/);
 });

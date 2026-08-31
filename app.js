@@ -18,56 +18,26 @@ const {
   toggleNextRole,
   updateDraft,
 } = globalThis.MyPolyphonyModel;
+const {
+  DEFAULT_FONT_PREFERENCE,
+  FONT_PREFERENCE_LABELS,
+  FONT_STORAGE_KEY,
+  isViewMode,
+  normalizeFontPreference,
+} = globalThis.MyPolyphonyPreferences;
+const { readStorage, removeStorage, writeStorage } = globalThis.MyPolyphonyStorage;
+const {
+  autoGrow,
+  collectElements,
+  createDesktopMessage,
+  createMobileMessage,
+  formatDialogueStartedAt,
+  roleLabel,
+} = globalThis.MyPolyphonyView;
 
-const FONT_STORAGE_KEY = "my-polyphony:v1:font";
-const DEFAULT_FONT_PREFERENCE = "mincho";
-const FONT_PREFERENCE_LABELS = Object.freeze({
-  mincho: "明朝",
-  gothic: "ゴシック",
-  "noto-sans": "Noto Sans JP 優先",
-});
+const elements = collectElements(document);
 
-const elements = {
-  notice: document.querySelector("#notice"),
-  noticeText: document.querySelector("#noticeText"),
-  dismissNoticeButton: document.querySelector("#dismissNoticeButton"),
-  modeButtons: [...document.querySelectorAll(".mode-button")],
-  importButton: document.querySelector("#importButton"),
-  importInput: document.querySelector("#importInput"),
-  settingsMenu: document.querySelector("#settingsMenu"),
-  fontSelect: document.querySelector("#fontSelect"),
-  exportJsonButton: document.querySelector("#exportJsonButton"),
-  exportTextButton: document.querySelector("#exportTextButton"),
-  resetButton: document.querySelector("#resetButton"),
-  loadExampleButton: document.querySelector("#loadExampleButton"),
-  toolSpecificationExample: document.querySelector("#toolSpecificationExample"),
-  saveStatus: document.querySelector("#saveStatus"),
-  messageCount: document.querySelector("#messageCount"),
-  desktopView: document.querySelector("#desktopView"),
-  desktopMessages: document.querySelector("#desktopMessages"),
-  desktopEmpty: document.querySelector("#desktopEmpty"),
-  desktopComposer: document.querySelector("#desktopComposer"),
-  desktopDraft: document.querySelector("#desktopDraft"),
-  desktopRoleLabel: document.querySelector("#desktopRoleLabel"),
-  dialogueStartedAt: document.querySelector("#dialogueStartedAt"),
-  mobileView: document.querySelector("#mobileView"),
-  mobileFeed: document.querySelector("#mobileFeed"),
-  mobileMessages: document.querySelector("#mobileMessages"),
-  mobileEmpty: document.querySelector("#mobileEmpty"),
-  mobileComposer: document.querySelector("#mobileComposer"),
-  mobileDraft: document.querySelector("#mobileDraft"),
-  mobileFullscreenButton: document.querySelector("#mobileFullscreenButton"),
-  mobileRoleLabel: document.querySelector("#mobileRoleLabel"),
-  editDialog: document.querySelector("#editDialog"),
-  editForm: document.querySelector("#editForm"),
-  editText: document.querySelector("#editText"),
-  editRoleLabel: document.querySelector("#editRoleLabel"),
-  closeEditButton: document.querySelector("#closeEditButton"),
-  cancelEditButton: document.querySelector("#cancelEditButton"),
-  toast: document.querySelector("#toast"),
-  liveRegion: document.querySelector("#liveRegion"),
-};
-
+// アプリの一時状態。保存される対話データの形は model.js が定義する。
 const mobileMedia = window.matchMedia("(max-width: 767px)");
 let state = createInitialState();
 let viewMode = mobileMedia.matches ? "mobile" : "desktop";
@@ -79,21 +49,7 @@ let toastTimer = null;
 let storageWriteBlocked = false;
 let immersiveMode = "off";
 
-function roleLabel(role) {
-  return role === ROLE_SELF ? "自分" : "相手";
-}
-
-function formatDialogueStartedAt(value) {
-  const date = new Date(value);
-  const weekday = ["日", "月", "火", "水", "木", "金", "土"][date.getDay()];
-  const minute = String(date.getMinutes()).padStart(2, "0");
-  return `${date.getMonth() + 1} 月 ${date.getDate()} 日（${weekday}）　${date.getHours()} 時 ${minute} 分`;
-}
-
-function normalizeFontPreference(value) {
-  return Object.hasOwn(FONT_PREFERENCE_LABELS, value) ? value : DEFAULT_FONT_PREFERENCE;
-}
-
+// 設定と初期状態の復元
 function applyFontPreference(value) {
   fontPreference = normalizeFontPreference(value);
   document.documentElement.dataset.dialogueFont = fontPreference;
@@ -101,17 +57,17 @@ function applyFontPreference(value) {
 }
 
 function persistFontPreference() {
-  try {
-    localStorage.setItem(FONT_STORAGE_KEY, fontPreference);
+  const result = writeStorage(FONT_STORAGE_KEY, fontPreference);
+  if (result.ok) {
     return true;
-  } catch (error) {
-    showNotice(
-      "書体の設定をこのブラウザに保存できませんでした。現在のページでは選んだ書体を利用できます。",
-      "warning",
-    );
-    console.warn(error);
-    return false;
   }
+
+  showNotice(
+    "書体の設定をこのブラウザに保存できませんでした。現在のページでは選んだ書体を利用できます。",
+    "warning",
+  );
+  console.warn(result.error);
+  return false;
 }
 
 function changeFontPreference(event) {
@@ -122,43 +78,54 @@ function changeFontPreference(event) {
   announce(`対話篇の書体を${label}に変更しました。`);
 }
 
+function stopAutoSaveAfterLoadFailure(error) {
+  storageWriteBlocked = true;
+  showNotice(
+    "端末内の保存データを読み込めなかったため、自動保存を停止しました。読み込みまたは「新しく始める」を選ぶまで、元の保存データは上書きしません。",
+    "error",
+  );
+  console.error(error);
+}
+
 function loadInitialState() {
-  try {
-    const stored = localStorage.getItem(STORAGE_KEY);
-    if (stored) {
-      const restored = parseStoredState(stored);
-      state = refreshStartedAtIfEmpty(restored);
-      if (state !== restored) {
-        persistNow();
+  const dialogueResult = readStorage(STORAGE_KEY);
+  if (dialogueResult.ok) {
+    try {
+      if (dialogueResult.value) {
+        const restored = parseStoredState(dialogueResult.value);
+        state = refreshStartedAtIfEmpty(restored);
+        if (state !== restored) {
+          persistNow();
+        }
       }
+    } catch (error) {
+      stopAutoSaveAfterLoadFailure(error);
     }
-  } catch (error) {
-    storageWriteBlocked = true;
-    showNotice(
-      "端末内の保存データを読み込めなかったため、自動保存を停止しました。読み込みまたは「新しく始める」を選ぶまで、元の保存データは上書きしません。",
-      "error",
-    );
-    console.error(error);
+  } else {
+    stopAutoSaveAfterLoadFailure(dialogueResult.error);
   }
 
-  try {
-    const storedMode = localStorage.getItem(MODE_STORAGE_KEY);
-    if (storedMode === "desktop" || storedMode === "mobile") {
+  const modeResult = readStorage(MODE_STORAGE_KEY);
+  if (modeResult.ok) {
+    const storedMode = modeResult.value;
+    if (isViewMode(storedMode)) {
       viewMode = storedMode;
       hasManualMode = true;
     }
-  } catch (error) {
-    console.warn("表示モードの設定を読み込めませんでした。", error);
+  } else {
+    console.warn("表示モードの設定を読み込めませんでした。", modeResult.error);
   }
 
   applyFontPreference(DEFAULT_FONT_PREFERENCE);
-  try {
-    applyFontPreference(localStorage.getItem(FONT_STORAGE_KEY));
-  } catch (error) {
-    console.warn("書体の設定を読み込めませんでした。", error);
+  const fontResult = readStorage(FONT_STORAGE_KEY);
+  if (fontResult.ok) {
+    applyFontPreference(fontResult.value);
+  } else {
+    console.warn("書体の設定を読み込めませんでした。", fontResult.error);
   }
 }
 
+// 利用者への通知と保存
 function showNotice(message, level = "warning") {
   elements.noticeText.textContent = message;
   elements.notice.dataset.level = level;
@@ -195,6 +162,15 @@ function setSaveStatus(message, level = "saved") {
   elements.saveStatus.dataset.level = level;
 }
 
+function reportSaveFailure(error) {
+  setSaveStatus("自動保存できません", "error");
+  showNotice(
+    "端末内に自動保存できませんでした。ページを閉じる前にJSONを書き出して、対話篇を保護してください。",
+    "error",
+  );
+  console.error(error);
+}
+
 function persistNow() {
   window.clearTimeout(saveTimer);
   saveTimer = null;
@@ -204,19 +180,22 @@ function persistNow() {
     return false;
   }
 
+  let serializedState;
   try {
-    localStorage.setItem(STORAGE_KEY, serializeStoredState(state));
-    setSaveStatus("この端末に保存済み", "saved");
-    return true;
+    serializedState = serializeStoredState(state);
   } catch (error) {
-    setSaveStatus("自動保存できません", "error");
-    showNotice(
-      "端末内に自動保存できませんでした。ページを閉じる前にJSONを書き出して、対話篇を保護してください。",
-      "error",
-    );
-    console.error(error);
+    reportSaveFailure(error);
     return false;
   }
+
+  const result = writeStorage(STORAGE_KEY, serializedState);
+  if (result.ok) {
+    setSaveStatus("この端末に保存済み", "saved");
+    return true;
+  }
+
+  reportSaveFailure(result.error);
+  return false;
 }
 
 function schedulePersist() {
@@ -231,16 +210,16 @@ function schedulePersist() {
 }
 
 function persistMode() {
-  try {
-    localStorage.setItem(MODE_STORAGE_KEY, viewMode);
-  } catch (error) {
+  const result = writeStorage(MODE_STORAGE_KEY, viewMode);
+  if (!result.ok) {
     showNotice("表示モードの設定を保存できませんでした。対話篇の内容には影響ありません。", "warning");
-    console.warn(error);
+    console.warn(result.error);
   }
 }
 
+// 表示モードとモバイル全画面表示
 function setMode(mode, { manual = false, focus = false } = {}) {
-  if (mode !== "desktop" && mode !== "mobile") {
+  if (!isViewMode(mode)) {
     return;
   }
 
@@ -358,12 +337,7 @@ function handleFullscreenError(event) {
   console.warn("全画面表示の要求が拒否されました。", event);
 }
 
-function autoGrow(textarea) {
-  textarea.style.height = "0px";
-  const maximum = textarea === elements.mobileDraft ? 132 : 240;
-  textarea.style.height = `${Math.min(textarea.scrollHeight, maximum)}px`;
-}
-
+// 描画と入力欄の同期
 function syncDraftInputs(source = null) {
   [elements.desktopDraft, elements.mobileDraft].forEach((input) => {
     if (input !== source && input.value !== state.draft) {
@@ -371,73 +345,6 @@ function syncDraftInputs(source = null) {
     }
     autoGrow(input);
   });
-}
-
-function makeActionButton(label, action, id) {
-  const button = document.createElement("button");
-  button.type = "button";
-  button.className = `message-action message-action--${action}`;
-  button.dataset.action = action;
-  button.dataset.id = id;
-  button.textContent = label;
-  return button;
-}
-
-function createDesktopMessage(message, index) {
-  const article = document.createElement("article");
-  article.className = `desktop-message desktop-message--${message.role}`;
-  article.dataset.messageId = message.id;
-  article.setAttribute("aria-label", `${roleLabel(message.role)}の発言 ${index + 1}`);
-
-  const number = document.createElement("span");
-  number.className = "desktop-message__number";
-  number.textContent = String(index + 1).padStart(2, "0");
-  number.setAttribute("aria-hidden", "true");
-
-  const content = document.createElement("p");
-  content.className = "desktop-message__content";
-  content.append(document.createTextNode("「"));
-  const text = document.createElement("span");
-  text.textContent = message.text;
-  content.append(text, document.createTextNode("」"));
-
-  const actions = document.createElement("div");
-  actions.className = "message-actions";
-  actions.append(
-    makeActionButton("編集", "edit", message.id),
-    makeActionButton("削除", "delete", message.id),
-  );
-
-  article.append(number, content, actions);
-  return article;
-}
-
-function createMobileMessage(message, index) {
-  const article = document.createElement("article");
-  article.className = `mobile-message mobile-message--${message.role}`;
-  article.dataset.messageId = message.id;
-  article.setAttribute("aria-label", `${roleLabel(message.role)}の発言 ${index + 1}`);
-
-  const bubble = document.createElement("div");
-  bubble.className = "mobile-message__bubble";
-
-  const speaker = document.createElement("span");
-  speaker.className = "visually-hidden";
-  speaker.textContent = `${roleLabel(message.role)}：`;
-
-  const content = document.createElement("p");
-  content.textContent = message.text;
-
-  const actions = document.createElement("div");
-  actions.className = "message-actions mobile-message__actions";
-  actions.append(
-    makeActionButton("編集", "edit", message.id),
-    makeActionButton("削除", "delete", message.id),
-  );
-
-  bubble.append(speaker, content, actions);
-  article.append(bubble);
-  return article;
 }
 
 function renderMessages() {
@@ -540,6 +447,7 @@ function focusComposer() {
   target.setSelectionRange(end, end);
 }
 
+// 対話篇の編集操作
 function handleDraftInput(event) {
   state = updateDraft(state, event.currentTarget.value);
   syncDraftInputs(event.currentTarget);
@@ -658,6 +566,7 @@ function handleMessageAction(event) {
   }
 }
 
+// 読み込みと書き出し
 function downloadFile(contents, filename, type) {
   const blob = new Blob([contents], { type });
   const url = URL.createObjectURL(blob);
@@ -774,10 +683,9 @@ function resetDialogue() {
   storageWriteBlocked = false;
   dismissNotice();
 
-  try {
-    localStorage.removeItem(STORAGE_KEY);
-  } catch (error) {
-    console.warn(error);
+  const result = removeStorage(STORAGE_KEY);
+  if (!result.ok) {
+    console.warn(result.error);
   }
 
   persistNow();
@@ -785,6 +693,7 @@ function resetDialogue() {
   showToast("新しい対話篇を開きました");
 }
 
+// イベントの接続をここへ集約し、各補助モジュールを副作用から切り離す。
 function bindEvents() {
   document.addEventListener("keydown", handleRoleShortcut);
   document.addEventListener("keydown", (event) => {

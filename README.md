@@ -23,7 +23,7 @@
 
 ## ローカルで開く
 
-`index.html` をダブルクリックすれば、そのままブラウザで利用できます。サーバーやインストールは不要です。アプリのJavaScriptとCSSはどちらも `index.html` 内へ直接埋め込まれているため、このファイル一つだけで動作します。
+`index.html` をダブルクリックすれば、そのままブラウザで利用できます。サーバーやインストールは不要です。配布用の `index.html` にはJavaScriptとCSSが埋め込まれているため、このファイル一つだけで動作します。
 
 開発・確認用にローカルサーバーから開く場合は、Node.jsがあれば次を実行します。
 
@@ -39,6 +39,53 @@ python -m http.server 4173
 
 後者の場合は、ブラウザで `http://localhost:4173/` を開きます。
 
+## 文書表示の文字と間隔を調整する
+
+`index.html` の先頭付近にある `my-polyphony-local-tuning` という表示調整欄では、文書表示の密度を数値で変更できます。この欄は自動生成の対象外であるため、開発用ファイルから `index.html` を更新しても指定値が保たれます。
+
+```css
+:root {
+  --desktop-message-gap: 0.8rem;
+  --desktop-self-to-self-gap: 0.8rem;
+  --desktop-message-padding-block: 0.8rem;
+  --desktop-message-min-height: 3.3rem;
+  --desktop-content-font-size: clamp(1rem, 1.7vw, 1.17rem);
+  --desktop-content-line-height: 2;
+}
+```
+
+たとえば、連続する「自分」の発言を詰め、本文も小さくする場合は次の値から試せます。
+
+```css
+--desktop-message-gap: 0.35rem;
+--desktop-self-to-self-gap: 0.15rem;
+--desktop-message-padding-block: 0.35rem;
+--desktop-message-min-height: 0rem;
+--desktop-content-font-size: clamp(0.92rem, 1.3vw, 1.05rem);
+--desktop-content-line-height: 1.6;
+```
+
+`line-height: 1.6` は、一行の高さを文字サイズの1.6倍にする指定です。`clamp(最小値, 画面幅に応じた値, 最大値)` は、画面の幅に応じて文字サイズをその範囲内で変化させます。値を保存してブラウザを再読み込みすると結果を確認できます。
+
+## 開発時の構成
+
+開発では、役割ごとのファイルを編集元として扱います。
+
+- `model.js`: 発言、下書き、読み書き形式など、対話篇そのものの規則
+- `preferences.js`: 書体と表示モードの設定値
+- `storage.js`: ブラウザ内保存との境界
+- `view.js`: DOM要素の取得、発言要素の生成、表示用の整形
+- `app.js`: 各役割を結び付ける画面操作の進行
+- `styles.css`: 色、寸法、文書表示、チャット表示を含む基本スタイル
+
+編集後は次を実行すると、これらの内容が `index.html` へ埋め込まれます。
+
+```sh
+npm run build
+```
+
+すなわち、実装は役割別のファイルで読みやすく保ち、利用時には従来どおり単一HTMLを使う構成です。
+
 ## テスト
 
 追加パッケージのインストールは不要です。Node.js 20以降で次を実行します。
@@ -52,6 +99,8 @@ npm test
 ```sh
 npm run check
 ```
+
+`npm run check` は構文、動作テスト、`index.html` と編集元の同期を確認します。
 
 ## GitHub Pagesで公開する
 
@@ -87,4 +136,4 @@ npm run check
 
 ## MVPに含まれないもの
 
-音声入力、三者以上の会話、文字色や文字サイズなど書体以外の見た目のカスタマイズ、クラウド同期、共同編集、TXT読み込みには対応していません。
+音声入力、三者以上の会話、画面上の操作による文字色や文字サイズのカスタマイズ、クラウド同期、共同編集、TXT読み込みには対応していません。文書表示の文字サイズと間隔は、上記の表示調整欄から変更できます。

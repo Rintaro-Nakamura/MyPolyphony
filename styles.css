@@ -1,5 +1,11 @@
+/* --------------------------------------------------------------------------
+   Design foundations
+   -------------------------------------------------------------------------- */
+
 :root {
   color-scheme: light;
+
+  /* Palette */
   --canvas: #f4f0e7;
   --canvas-deep: #e9e2d5;
   --paper: #fffdf8;
@@ -15,10 +21,32 @@
   --self-pale: #fff8e8;
   --success: #337660;
   --danger: #b53d3d;
+  --selection: #f3cdbf;
+  --phone-surface: #edf0f4;
+  --phone-input: #f5f6f8;
+  --phone-self-message: #fff4d9;
+  --phone-other-message: #dde1ff;
+
+  /* Shape, elevation, and motion */
   --shadow: 0 24px 70px rgba(51, 43, 31, 0.12);
+  --radius-control: 0.65rem;
+  --radius-panel: 0.9rem;
+  --radius-pill: 999px;
+  --motion-fast: 150ms ease;
+  --motion-toast: 180ms ease;
+
+  /* Type */
   --font-sans: Inter, "Hiragino Sans", "Yu Gothic UI", "Yu Gothic", Meiryo, sans-serif;
   --font-serif: "Yu Mincho", "Hiragino Mincho ProN", "BIZ UDPMincho", serif;
   --font-dialogue: "Yu Mincho", "Hiragino Mincho ProN", "BIZ UDPMincho", serif;
+
+  /* Desktop dialogue density: edit these values to explore the reading rhythm. */
+  --desktop-message-gap: 0.8rem;
+  --desktop-self-to-self-gap: 0.8rem;
+  --desktop-message-padding-block: 0.8rem;
+  --desktop-message-min-height: 3.3rem;
+  --desktop-content-font-size: clamp(1rem, 1.7vw, 1.17rem);
+  --desktop-content-line-height: 2;
 }
 
 :root[data-dialogue-font="gothic"] {
@@ -30,6 +58,10 @@
   --font-dialogue: "Noto Sans JP", "Noto Sans CJK JP", "Hiragino Sans", "Yu Gothic", Meiryo,
     sans-serif;
 }
+
+/* --------------------------------------------------------------------------
+   Base and accessibility
+   -------------------------------------------------------------------------- */
 
 *,
 *::before,
@@ -81,7 +113,7 @@ textarea {
 
 ::selection {
   color: var(--ink);
-  background: #f3cdbf;
+  background: var(--selection);
 }
 
 :focus-visible {
@@ -101,6 +133,10 @@ textarea {
   border: 0 !important;
 }
 
+/* --------------------------------------------------------------------------
+   Application shell and primary navigation
+   -------------------------------------------------------------------------- */
+
 .skip-link {
   position: fixed;
   z-index: 1000;
@@ -109,9 +145,9 @@ textarea {
   padding: 0.65rem 1rem;
   color: white;
   background: var(--ink);
-  border-radius: 0.5rem;
+  border-radius: var(--radius-control);
   transform: translateY(-160%);
-  transition: transform 150ms ease;
+  transition: transform var(--motion-fast);
 }
 
 .skip-link:focus {
@@ -189,7 +225,7 @@ textarea {
   padding: 0.2rem;
   margin-right: 0.35rem;
   background: rgba(31, 37, 51, 0.07);
-  border-radius: 999px;
+  border-radius: var(--radius-pill);
 }
 
 .mode-button,
@@ -197,13 +233,13 @@ textarea {
   min-height: 38px;
   padding: 0.45rem 0.85rem;
   border: 0;
-  border-radius: 999px;
+  border-radius: var(--radius-pill);
   background: transparent;
   font-size: 0.78rem;
   font-weight: 700;
   white-space: nowrap;
   cursor: pointer;
-  transition: color 150ms ease, background 150ms ease, transform 150ms ease;
+  transition: color var(--motion-fast), background var(--motion-fast), transform var(--motion-fast);
 }
 
 .mode-button:hover,
@@ -225,6 +261,10 @@ textarea {
 .tool-button--quiet {
   color: var(--ink-soft);
 }
+
+/* --------------------------------------------------------------------------
+   Settings and file operations
+   -------------------------------------------------------------------------- */
 
 .settings-menu {
   position: relative;
@@ -262,7 +302,7 @@ textarea {
   gap: 0.65rem;
   overflow-y: auto;
   border: 1px solid var(--line);
-  border-radius: 0.9rem;
+  border-radius: var(--radius-panel);
   background: var(--paper);
   box-shadow: 0 16px 45px rgba(31, 37, 51, 0.16);
 }
@@ -293,7 +333,7 @@ textarea {
   padding: 0.7rem 0.75rem;
   text-align: left;
   border: 0;
-  border-radius: 0.65rem;
+  border-radius: var(--radius-control);
   background: transparent;
   cursor: pointer;
 }
@@ -329,7 +369,7 @@ textarea {
   padding: 0.55rem 2.2rem 0.55rem 0.7rem;
   color: var(--ink);
   border: 1px solid var(--line-strong);
-  border-radius: 0.65rem;
+  border-radius: var(--radius-control);
   background: white;
   cursor: pointer;
 }
@@ -341,6 +381,10 @@ textarea {
   font-size: 0.68rem;
   line-height: 1.65;
 }
+
+/* --------------------------------------------------------------------------
+   Notices and page introduction
+   -------------------------------------------------------------------------- */
 
 .notice {
   position: relative;
@@ -486,6 +530,10 @@ textarea {
   background: var(--danger);
 }
 
+/* --------------------------------------------------------------------------
+   Desktop document view
+   -------------------------------------------------------------------------- */
+
 .desktop-view {
   padding-bottom: 4rem;
 }
@@ -562,7 +610,15 @@ textarea {
 
 .desktop-messages {
   display: grid;
-  gap: 0.8rem;
+  gap: 0;
+}
+
+.desktop-message + .desktop-message {
+  margin-block-start: var(--desktop-message-gap);
+}
+
+.desktop-message--self + .desktop-message--self {
+  margin-block-start: var(--desktop-self-to-self-gap);
 }
 
 .desktop-message {
@@ -570,8 +626,8 @@ textarea {
   display: grid;
   grid-template-columns: 2.1rem minmax(0, 1fr) auto;
   align-items: start;
-  min-height: 3.3rem;
-  padding: 0.8rem 0.8rem 0.8rem 0;
+  min-height: var(--desktop-message-min-height);
+  padding: var(--desktop-message-padding-block) 0.8rem var(--desktop-message-padding-block) 0;
   border-radius: 0.35rem;
 }
 
@@ -596,8 +652,8 @@ textarea {
   min-width: 0;
   margin: 0;
   font-family: var(--font-dialogue);
-  font-size: clamp(1rem, 1.7vw, 1.17rem);
-  line-height: 2;
+  font-size: var(--desktop-content-font-size);
+  line-height: var(--desktop-content-line-height);
   overflow-wrap: anywhere;
   white-space: pre-wrap;
 }
@@ -640,6 +696,10 @@ textarea {
   color: var(--danger);
 }
 
+/* --------------------------------------------------------------------------
+   Desktop composer
+   -------------------------------------------------------------------------- */
+
 .desktop-composer {
   position: relative;
   padding: 1.2rem 1rem 1rem;
@@ -647,7 +707,10 @@ textarea {
   border: 2px solid var(--ink);
   border-radius: 0.5rem;
   background: rgba(255, 255, 255, 0.82);
-  transition: border-color 150ms ease, box-shadow 150ms ease, background 150ms ease;
+  transition:
+    border-color var(--motion-fast),
+    box-shadow var(--motion-fast),
+    background var(--motion-fast);
 }
 
 .desktop-composer[data-role="other"] {
@@ -671,12 +734,12 @@ textarea {
   color: white;
   border: 0;
   background: var(--ink);
-  border-radius: 999px;
+  border-radius: var(--radius-pill);
   font-size: 0.65rem;
   font-weight: 800;
   letter-spacing: 0.04em;
   cursor: pointer;
-  transition: filter 150ms ease, transform 150ms ease;
+  transition: filter var(--motion-fast), transform var(--motion-fast);
 }
 
 .role-tag:hover {
@@ -758,7 +821,7 @@ kbd {
 .secondary-button {
   min-height: 40px;
   padding: 0.55rem 1rem;
-  border-radius: 999px;
+  border-radius: var(--radius-pill);
   font-size: 0.75rem;
   font-weight: 800;
   cursor: pointer;
@@ -776,6 +839,10 @@ kbd {
   background: var(--voice-dark);
 }
 
+/* --------------------------------------------------------------------------
+   Mobile chat view
+   -------------------------------------------------------------------------- */
+
 .mobile-view {
   padding: 1.3rem 0 4rem;
 }
@@ -790,7 +857,7 @@ kbd {
   overflow: hidden;
   border: 9px solid var(--ink);
   border-radius: 2.2rem;
-  background: #edf0f4;
+  background: var(--phone-surface);
   box-shadow: var(--shadow);
 }
 
@@ -838,11 +905,14 @@ kbd {
   color: #dfe2ff;
   border: 1px solid rgba(255, 255, 255, 0.18);
   background: transparent;
-  border-radius: 999px;
+  border-radius: var(--radius-pill);
   font-size: 0.62rem;
   font-weight: 800;
   cursor: pointer;
-  transition: color 150ms ease, border-color 150ms ease, background 150ms ease;
+  transition:
+    color var(--motion-fast),
+    border-color var(--motion-fast),
+    background var(--motion-fast);
 }
 
 .phone-header__turn:hover {
@@ -870,7 +940,10 @@ kbd {
   font-size: 1rem;
   line-height: 1;
   cursor: pointer;
-  transition: color 150ms ease, border-color 150ms ease, background 150ms ease;
+  transition:
+    color var(--motion-fast),
+    border-color var(--motion-fast),
+    background var(--motion-fast);
 }
 
 .phone-header__fullscreen:hover,
@@ -887,7 +960,7 @@ kbd {
   overscroll-behavior: contain;
   background:
     radial-gradient(circle at 12% 20%, rgba(92, 100, 199, 0.06), transparent 12rem),
-    #edf0f4;
+    var(--phone-surface);
   scrollbar-width: thin;
 }
 
@@ -956,12 +1029,12 @@ kbd {
 }
 
 .mobile-message--self .mobile-message__bubble {
-  background: #fff4d9;
+  background: var(--phone-self-message);
   border-bottom-right-radius: 0.3rem;
 }
 
 .mobile-message--other .mobile-message__bubble {
-  background: #dde1ff;
+  background: var(--phone-other-message);
   border-bottom-left-radius: 0.3rem;
   box-shadow: inset 3px 0 0 var(--voice), 0 3px 10px rgba(31, 37, 51, 0.06);
 }
@@ -1007,7 +1080,7 @@ kbd {
   border: 1px solid #cdd1da;
   border-radius: 1.2rem;
   outline: 0;
-  background: #f5f6f8;
+  background: var(--phone-input);
   font-family: var(--font-dialogue);
   font-size: 0.9rem;
   line-height: 1.45;
@@ -1029,7 +1102,7 @@ kbd {
   padding: 0;
   color: white;
   border: 0;
-  border-radius: 999px;
+  border-radius: var(--radius-pill);
   background: var(--accent);
   font-size: 0.72rem;
   font-weight: 800;
@@ -1057,7 +1130,7 @@ html.mobile-immersive .mobile-view {
   height: 100%;
   height: 100dvh;
   padding: 0;
-  background: #edf0f4;
+  background: var(--phone-surface);
 }
 
 html.mobile-immersive .phone-frame {
@@ -1111,6 +1184,10 @@ html.mobile-immersive .phone-header__fullscreen {
   margin: 0 0 0 auto;
   text-align: right;
 }
+
+/* --------------------------------------------------------------------------
+   Dialogs and transient feedback
+   -------------------------------------------------------------------------- */
 
 .edit-dialog {
   width: min(560px, calc(100% - 2rem));
@@ -1230,13 +1307,17 @@ html.mobile-immersive .phone-header__fullscreen {
   font-weight: 700;
   opacity: 0;
   transform: translateY(0.5rem);
-  transition: opacity 180ms ease, transform 180ms ease;
+  transition: opacity var(--motion-toast), transform var(--motion-toast);
 }
 
 .toast--visible {
   opacity: 1;
   transform: translateY(0);
 }
+
+/* --------------------------------------------------------------------------
+   Responsive adaptations
+   -------------------------------------------------------------------------- */
 
 @media (max-width: 900px) {
   .site-header__inner {
