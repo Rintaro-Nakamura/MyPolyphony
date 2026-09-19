@@ -7,6 +7,6 @@
     "build": "node scripts/build-standalone.mjs",
     "test": "node --test",
     "check:standalone": "node scripts/build-standalone.mjs --check",
-    "check": "node --check app.js && node --check model.js && node --check preferences.js && node --check storage.js && node --check view.js && node --check scripts/build-standalone.mjs && node --test && node scripts/build-standalone.mjs --check"
+    "check": "node --check app.js && node --check model.js && node --check preferences.js && node --check storage.js && node --check view.js && node --check interaction.js && node --check editors.js && node --check viewport.js && node --check scripts/build-standalone.mjs && node --test && node scripts/build-standalone.mjs --check"
   }
 }

@@ -49,6 +49,9 @@ async function buildStandalone() {
     readProjectFile("preferences.js"),
     readProjectFile("storage.js"),
     readProjectFile("view.js"),
+    readProjectFile("interaction.js"),
+    readProjectFile("editors.js"),
+    readProjectFile("viewport.js"),
     readProjectFile("app.js"),
   ]);
   const lineEnding = currentHtml.includes("\r\n") ? "\r\n" : "\n";

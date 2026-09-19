@@ -1910,7 +1910,6 @@
           ...state,
           messages: [...state.messages, message],
           draft: "",
-          nextRole: oppositeRole(state.nextRole),
         };
       }
 
@@ -1933,6 +1932,17 @@
         return {
           ...state,
           nextRole: oppositeRole(state.nextRole),
+        };
+      }
+
+      function setNextRole(state, nextRole) {
+        if (!state || typeof state !== "object" || !isRole(nextRole)) {
+          throw new TypeError("次の話者が正しくありません。");
+        }
+
+        return {
+          ...state,
+          nextRole,
         };
       }
 
@@ -1972,7 +1982,6 @@
         return {
           ...state,
           messages,
-          nextRole: nextRoleFromMessages(messages),
         };
       }
 
@@ -2050,7 +2059,16 @@
         return `${JSON.stringify(createDialogueExport(messages, exportedAt), null, 2)}\n`;
       }
 
-      function parseDialogue(source, idFactory = createId, startedAt = new Date()) {
+      function parseDialogue(
+        source,
+        idFactory = createId,
+        startedAt = new Date(),
+        nextRoleResolver = nextRoleFromMessages,
+      ) {
+        if (typeof nextRoleResolver !== "function") {
+          throw new TypeError("読み込み後の話者決定方法が正しくありません。");
+        }
+
         const data = JSON.parse(source);
 
         if (!data || typeof data !== "object" || Array.isArray(data)) {
@@ -2080,11 +2098,15 @@
           role: message.role,
           text: normalizeText(message.text),
         }));
+        const nextRole = nextRoleResolver(messages);
+        if (!isRole(nextRole)) {
+          throw new TypeError("読み込み後の話者が正しくありません。");
+        }
 
         return {
           messages,
           draft: "",
-          nextRole: nextRoleFromMessages(messages),
+          nextRole,
           startedAt: normalizeStartedAt(startedAt),
         };
       }
@@ -2137,6 +2159,7 @@
         commitDraft,
         updateDraft,
         toggleNextRole,
+        setNextRole,
         editMessage,
         deleteMessage,
         serializeStoredState,
@@ -2262,6 +2285,29 @@
         return `${date.getMonth() + 1} 月 ${date.getDate()} 日（${weekday}）　${date.getHours()} 時 ${minute} 分`;
       }
 
+      function renderRoleButton(button, role, { compact = false } = {}) {
+        const label = roleLabel(role);
+        const alternateLabel = roleLabel(role === "self" ? "other" : "self");
+        button.textContent = compact ? `次は${label}` : `次は ${label}`;
+        button.setAttribute(
+          "aria-label",
+          `次の話者は${label}です。クリックすると${alternateLabel}に切り替わります。`,
+        );
+        button.title = `クリックで「次は${alternateLabel}」に切り替え`;
+      }
+
+      function renderDesktopComposer({ composer, roleButton }, role) {
+        renderRoleButton(roleButton, role);
+        composer.dataset.role = role;
+      }
+
+      function renderMobileComposer({ composer, draftInput, roleButton }, role) {
+        const label = roleLabel(role);
+        renderRoleButton(roleButton, role, { compact: true });
+        draftInput.placeholder = `${label}として書く`;
+        composer.dataset.role = role;
+      }
+
       function autoGrow(textarea) {
         textarea.style.height = "0px";
         const maximum = textarea.id === "mobileDraft" ? 132 : 240;
@@ -2341,15 +2387,416 @@
         createDesktopMessage,
         createMobileMessage,
         formatDialogueStartedAt,
+        renderDesktopComposer,
+        renderMobileComposer,
         roleLabel,
       });
       })();
 
       (() => {
       const {
-        MODE_STORAGE_KEY,
-        ROLE_OTHER,
         ROLE_SELF,
+        isRole,
+        nextRoleFromMessages,
+        oppositeRole,
+      } = globalThis.MyPolyphonyModel;
+
+      const COMMAND_NONE = "none";
+      const COMMAND_COMMIT = "commit";
+      const COMMAND_SWITCH_ROLE = "switch-role";
+
+      const ROLE_AFTER_COMMIT_ALTERNATE = "alternate";
+      const ROLE_AFTER_COMMIT_PRESERVE = "preserve";
+      const ROLE_AFTER_DELETE_FROM_MESSAGES = "from-messages";
+      const ROLE_AFTER_DELETE_PRESERVE = "preserve";
+      const ROLE_AFTER_IMPORT_FROM_MESSAGES = "from-messages";
+      const ROLE_AFTER_IMPORT_INITIAL = "initial";
+
+      const SWITCH_SHORTCUT_CTRL_ALT_M = "ctrl-alt-m";
+      const SWITCH_SHORTCUT_TAB_WHEN_EMPTY = "tab-when-empty";
+      const SWITCH_SHORTCUT_NONE = "none";
+
+      const SUBMIT_SHORTCUT_ENTER = "enter";
+      const SUBMIT_SHORTCUT_SHIFT_ENTER = "shift-enter";
+      const SUBMIT_SHORTCUT_MOD_ENTER = "modifier-enter";
+
+      const ALTERNATING_INTERACTION_POLICY = Object.freeze({
+        roleAfterCommit: ROLE_AFTER_COMMIT_ALTERNATE,
+        roleAfterDelete: ROLE_AFTER_DELETE_FROM_MESSAGES,
+        roleAfterImport: ROLE_AFTER_IMPORT_FROM_MESSAGES,
+        globalSwitchShortcut: SWITCH_SHORTCUT_CTRL_ALT_M,
+        desktopSwitchShortcut: SWITCH_SHORTCUT_NONE,
+        desktopSubmitShortcut: SUBMIT_SHORTCUT_ENTER,
+        mobileSubmitShortcut: SUBMIT_SHORTCUT_MOD_ENTER,
+      });
+
+      const MANUAL_SWITCH_INTERACTION_POLICY = Object.freeze({
+        roleAfterCommit: ROLE_AFTER_COMMIT_PRESERVE,
+        roleAfterDelete: ROLE_AFTER_DELETE_PRESERVE,
+        roleAfterImport: ROLE_AFTER_IMPORT_INITIAL,
+        globalSwitchShortcut: SWITCH_SHORTCUT_NONE,
+        desktopSwitchShortcut: SWITCH_SHORTCUT_TAB_WHEN_EMPTY,
+        desktopSubmitShortcut: SUBMIT_SHORTCUT_ENTER,
+        mobileSubmitShortcut: SUBMIT_SHORTCUT_MOD_ENTER,
+      });
+
+      function assertPolicy(policy) {
+        if (!policy || typeof policy !== "object") {
+          throw new TypeError("対話操作の方針が正しくありません。");
+        }
+      }
+
+      function roleAfterCommit(role, policy) {
+        assertPolicy(policy);
+        if (!isRole(role)) {
+          throw new TypeError("発言後の話者を決められません。");
+        }
+
+        if (policy.roleAfterCommit === ROLE_AFTER_COMMIT_ALTERNATE) {
+          return oppositeRole(role);
+        }
+        if (policy.roleAfterCommit === ROLE_AFTER_COMMIT_PRESERVE) {
+          return role;
+        }
+
+        throw new TypeError("発言後の話者方針が正しくありません。");
+      }
+
+      function roleAfterDelete(messages, currentRole, policy) {
+        assertPolicy(policy);
+        if (!Array.isArray(messages) || !isRole(currentRole)) {
+          throw new TypeError("削除後の話者を決められません。");
+        }
+
+        if (policy.roleAfterDelete === ROLE_AFTER_DELETE_FROM_MESSAGES) {
+          return nextRoleFromMessages(messages);
+        }
+        if (policy.roleAfterDelete === ROLE_AFTER_DELETE_PRESERVE) {
+          return currentRole;
+        }
+
+        throw new TypeError("削除後の話者方針が正しくありません。");
+      }
+
+      function roleAfterImport(messages, policy, initialRole = ROLE_SELF) {
+        assertPolicy(policy);
+        if (!Array.isArray(messages) || !isRole(initialRole)) {
+          throw new TypeError("読み込み後の話者を決められません。");
+        }
+
+        if (policy.roleAfterImport === ROLE_AFTER_IMPORT_FROM_MESSAGES) {
+          return nextRoleFromMessages(messages);
+        }
+        if (policy.roleAfterImport === ROLE_AFTER_IMPORT_INITIAL) {
+          return initialRole;
+        }
+
+        throw new TypeError("読み込み後の話者方針が正しくありません。");
+      }
+
+      function shouldIgnoreKeyboardEvent(event) {
+        return Boolean(
+          event.defaultPrevented ||
+            event.isComposing ||
+            event.keyCode === 229,
+        );
+      }
+
+      function hasNoModifiers(event) {
+        return !event.ctrlKey && !event.altKey && !event.shiftKey && !event.metaKey;
+      }
+
+      function matchesSubmitShortcut(event, shortcut) {
+        if (event.key !== "Enter") {
+          return false;
+        }
+
+        if (shortcut === SUBMIT_SHORTCUT_ENTER) {
+          return !event.shiftKey;
+        }
+        if (shortcut === SUBMIT_SHORTCUT_SHIFT_ENTER) {
+          return event.shiftKey && !event.ctrlKey && !event.altKey && !event.metaKey;
+        }
+        if (shortcut === SUBMIT_SHORTCUT_MOD_ENTER) {
+          return (event.ctrlKey || event.metaKey) && !event.altKey;
+        }
+
+        return false;
+      }
+
+      function globalCommandForKey(event, { policy, editorOpen = false } = {}) {
+        assertPolicy(policy);
+        if (shouldIgnoreKeyboardEvent(event) || event.repeat || editorOpen) {
+          return COMMAND_NONE;
+        }
+
+        if (
+          policy.globalSwitchShortcut === SWITCH_SHORTCUT_CTRL_ALT_M &&
+          event.ctrlKey &&
+          event.altKey &&
+          !event.shiftKey &&
+          !event.metaKey &&
+          event.key?.toLowerCase() === "m"
+        ) {
+          return COMMAND_SWITCH_ROLE;
+        }
+
+        return COMMAND_NONE;
+      }
+
+      function desktopCommandForKey(event, draft, policy) {
+        assertPolicy(policy);
+        if (typeof draft !== "string") {
+          throw new TypeError("下書きが正しくありません。");
+        }
+        if (shouldIgnoreKeyboardEvent(event)) {
+          return COMMAND_NONE;
+        }
+
+        if (
+          policy.desktopSwitchShortcut === SWITCH_SHORTCUT_TAB_WHEN_EMPTY &&
+          event.key === "Tab" &&
+          hasNoModifiers(event) &&
+          !event.repeat &&
+          draft.trim().length === 0
+        ) {
+          return COMMAND_SWITCH_ROLE;
+        }
+
+        if (matchesSubmitShortcut(event, policy.desktopSubmitShortcut)) {
+          return COMMAND_COMMIT;
+        }
+
+        return COMMAND_NONE;
+      }
+
+      function mobileCommandForKey(event, policy) {
+        assertPolicy(policy);
+        if (shouldIgnoreKeyboardEvent(event)) {
+          return COMMAND_NONE;
+        }
+
+        return matchesSubmitShortcut(event, policy.mobileSubmitShortcut)
+          ? COMMAND_COMMIT
+          : COMMAND_NONE;
+      }
+
+      globalThis.MyPolyphonyInteraction = Object.freeze({
+        COMMAND_NONE,
+        COMMAND_COMMIT,
+        COMMAND_SWITCH_ROLE,
+        ROLE_AFTER_COMMIT_ALTERNATE,
+        ROLE_AFTER_COMMIT_PRESERVE,
+        ROLE_AFTER_DELETE_FROM_MESSAGES,
+        ROLE_AFTER_DELETE_PRESERVE,
+        ROLE_AFTER_IMPORT_FROM_MESSAGES,
+        ROLE_AFTER_IMPORT_INITIAL,
+        SWITCH_SHORTCUT_CTRL_ALT_M,
+        SWITCH_SHORTCUT_TAB_WHEN_EMPTY,
+        SWITCH_SHORTCUT_NONE,
+        SUBMIT_SHORTCUT_ENTER,
+        SUBMIT_SHORTCUT_SHIFT_ENTER,
+        SUBMIT_SHORTCUT_MOD_ENTER,
+        ALTERNATING_INTERACTION_POLICY,
+        MANUAL_SWITCH_INTERACTION_POLICY,
+        roleAfterCommit,
+        roleAfterDelete,
+        roleAfterImport,
+        globalCommandForKey,
+        desktopCommandForKey,
+        mobileCommandForKey,
+      });
+      })();
+
+      (() => {
+      const {
+        COMMAND_COMMIT,
+        COMMAND_NONE,
+        COMMAND_SWITCH_ROLE,
+        desktopCommandForKey,
+        mobileCommandForKey,
+      } = globalThis.MyPolyphonyInteraction;
+
+      function executeEditorCommand(command, event, { source, onCommit, onSwitchRole }) {
+        if (command === COMMAND_NONE) {
+          return false;
+        }
+
+        event.preventDefault();
+        if (command === COMMAND_COMMIT) {
+          onCommit(source);
+          return true;
+        }
+        if (command === COMMAND_SWITCH_ROLE) {
+          onSwitchRole();
+          return true;
+        }
+
+        throw new TypeError(`未対応のエディタ命令です（${String(command)}）。`);
+      }
+
+      function bindDesktopEditor({
+        composer,
+        draftInput,
+        roleButton,
+        getDraft,
+        interactionPolicy,
+        onDraftInput,
+        onCommit,
+        onSwitchRole,
+      }) {
+        const handleKeydown = (event) => {
+          const command = desktopCommandForKey(event, getDraft(), interactionPolicy);
+          executeEditorCommand(command, event, {
+            source: draftInput,
+            onCommit,
+            onSwitchRole,
+          });
+        };
+        const handleSubmit = (event) => {
+          event.preventDefault();
+          onCommit(draftInput);
+        };
+
+        draftInput.addEventListener("input", onDraftInput);
+        draftInput.addEventListener("keydown", handleKeydown);
+        roleButton.addEventListener("click", onSwitchRole);
+        composer.addEventListener("submit", handleSubmit);
+      }
+
+      function bindMobileEditor({
+        composer,
+        draftInput,
+        roleButton,
+        interactionPolicy,
+        onDraftInput,
+        onCommit,
+        onSwitchRole,
+      }) {
+        const handleKeydown = (event) => {
+          const command = mobileCommandForKey(event, interactionPolicy);
+          executeEditorCommand(command, event, {
+            source: draftInput,
+            onCommit,
+            onSwitchRole,
+          });
+        };
+        const handleSubmit = (event) => {
+          event.preventDefault();
+          onCommit(draftInput);
+        };
+
+        draftInput.addEventListener("input", onDraftInput);
+        draftInput.addEventListener("keydown", handleKeydown);
+        roleButton.addEventListener("click", onSwitchRole);
+        composer.addEventListener("submit", handleSubmit);
+      }
+
+      globalThis.MyPolyphonyEditors = Object.freeze({
+        executeEditorCommand,
+        bindDesktopEditor,
+        bindMobileEditor,
+      });
+      })();
+
+      (() => {
+      const SCROLL_NONE = "none";
+      const SCROLL_FEED_END = "feed-end";
+      const SCROLL_REVEAL_INPUT = "reveal-input";
+
+      const STATIC_DESKTOP_VIEWPORT_POLICY = Object.freeze({
+        afterCommit: SCROLL_NONE,
+        focusPreventScroll: true,
+        bottomInset: 32,
+      });
+
+      const CHAT_MOBILE_VIEWPORT_POLICY = Object.freeze({
+        afterCommit: SCROLL_FEED_END,
+        focusPreventScroll: false,
+        bottomInset: 16,
+      });
+
+      const FOLLOW_INPUT_VIEWPORT_POLICY = Object.freeze({
+        afterCommit: SCROLL_REVEAL_INPUT,
+        focusPreventScroll: true,
+        bottomInset: 32,
+      });
+
+      function calculateRevealDelta(targetBottom, viewportBottom, bottomInset = 0) {
+        for (const value of [targetBottom, viewportBottom, bottomInset]) {
+          if (!Number.isFinite(value)) {
+            throw new TypeError("スクロール位置の計算値が正しくありません。");
+          }
+        }
+
+        return Math.max(0, targetBottom + bottomInset - viewportBottom);
+      }
+
+      function applyAfterCommitScroll({
+        policy,
+        feed = null,
+        input = null,
+        windowObject = globalThis.window,
+      }) {
+        if (!policy || typeof policy !== "object") {
+          throw new TypeError("画面追従の方針が正しくありません。");
+        }
+
+        if (policy.afterCommit === SCROLL_NONE) {
+          return 0;
+        }
+
+        if (policy.afterCommit === SCROLL_FEED_END) {
+          if (!feed) {
+            throw new TypeError("末尾へ移動する表示領域がありません。");
+          }
+          const previous = feed.scrollTop;
+          feed.scrollTop = feed.scrollHeight;
+          return feed.scrollTop - previous;
+        }
+
+        if (policy.afterCommit === SCROLL_REVEAL_INPUT) {
+          if (!input || !windowObject) {
+            throw new TypeError("入力位置を表示するための画面情報がありません。");
+          }
+          const viewportBottom = windowObject.innerHeight;
+          const targetBottom = input.getBoundingClientRect().bottom;
+          const delta = calculateRevealDelta(targetBottom, viewportBottom, policy.bottomInset ?? 0);
+          if (delta > 0) {
+            windowObject.scrollBy({ top: delta, behavior: "auto" });
+          }
+          return delta;
+        }
+
+        throw new TypeError("画面追従の方針が正しくありません。");
+      }
+
+      function focusDraftInput(input, policy) {
+        if (!input || !policy || typeof policy !== "object") {
+          throw new TypeError("入力欄のフォーカス条件が正しくありません。");
+        }
+
+        input.focus({ preventScroll: Boolean(policy.focusPreventScroll) });
+        const end = input.value.length;
+        input.setSelectionRange(end, end);
+      }
+
+      globalThis.MyPolyphonyViewport = Object.freeze({
+        SCROLL_NONE,
+        SCROLL_FEED_END,
+        SCROLL_REVEAL_INPUT,
+        STATIC_DESKTOP_VIEWPORT_POLICY,
+        CHAT_MOBILE_VIEWPORT_POLICY,
+        FOLLOW_INPUT_VIEWPORT_POLICY,
+        calculateRevealDelta,
+        applyAfterCommitScroll,
+        focusDraftInput,
+      });
+      })();
+
+      (() => {
+      const {
+        MODE_STORAGE_KEY,
         STORAGE_KEY,
         commitDraft,
         createExportBasename,
@@ -2362,6 +2809,7 @@
         serializeDialogue,
         serializePlainText,
         serializeStoredState,
+        setNextRole,
         toggleNextRole,
         updateDraft,
       } = globalThis.MyPolyphonyModel;
@@ -2379,10 +2827,34 @@
         createDesktopMessage,
         createMobileMessage,
         formatDialogueStartedAt,
+        renderDesktopComposer,
+        renderMobileComposer,
         roleLabel,
       } = globalThis.MyPolyphonyView;
+      const {
+        ALTERNATING_INTERACTION_POLICY,
+        COMMAND_SWITCH_ROLE,
+        ROLE_AFTER_COMMIT_ALTERNATE,
+        globalCommandForKey,
+        roleAfterCommit,
+        roleAfterDelete,
+        roleAfterImport,
+      } = globalThis.MyPolyphonyInteraction;
+      const { bindDesktopEditor, bindMobileEditor } = globalThis.MyPolyphonyEditors;
+      const {
+        CHAT_MOBILE_VIEWPORT_POLICY,
+        STATIC_DESKTOP_VIEWPORT_POLICY,
+        applyAfterCommitScroll,
+        focusDraftInput,
+      } = globalThis.MyPolyphonyViewport;
 
       const elements = collectElements(document);
+
+      // 各表示で採用する操作方針。共有データを変えず、表示ごとに別方針へ交換できる。
+      const desktopInteractionPolicy = ALTERNATING_INTERACTION_POLICY;
+      const mobileInteractionPolicy = ALTERNATING_INTERACTION_POLICY;
+      const desktopViewportPolicy = STATIC_DESKTOP_VIEWPORT_POLICY;
+      const mobileViewportPolicy = CHAT_MOBILE_VIEWPORT_POLICY;
 
       // アプリの一時状態。保存される対話データの形は model.js が定義する。
       const mobileMedia = window.matchMedia("(max-width: 767px)");
@@ -2395,6 +2867,20 @@
       let toastTimer = null;
       let storageWriteBlocked = false;
       let immersiveMode = "off";
+
+      function interactionPolicyForMode(mode = viewMode) {
+        return mode === "mobile" ? mobileInteractionPolicy : desktopInteractionPolicy;
+      }
+
+      function interactionPolicyForSource(source) {
+        return source === elements.mobileDraft
+          ? mobileInteractionPolicy
+          : desktopInteractionPolicy;
+      }
+
+      function viewportPolicyForMode(mode = viewMode) {
+        return mode === "mobile" ? mobileViewportPolicy : desktopViewportPolicy;
+      }
 
       // 設定と初期状態の復元
       function applyFontPreference(value) {
@@ -2718,51 +3204,44 @@
       }
 
       function renderComposer() {
-        const label = roleLabel(state.nextRole);
-        const alternateLabel = roleLabel(state.nextRole === ROLE_SELF ? ROLE_OTHER : ROLE_SELF);
-        elements.desktopRoleLabel.textContent = `次は ${label}`;
-        elements.mobileRoleLabel.textContent = `次は${label}`;
-        elements.mobileDraft.placeholder = `${label}として書く`;
-
-        [elements.desktopRoleLabel, elements.mobileRoleLabel].forEach((button) => {
-          button.setAttribute(
-            "aria-label",
-            `次の話者は${label}です。クリックすると${alternateLabel}に切り替わります。`,
-          );
-          button.title = `クリックで「次は${alternateLabel}」に切り替え`;
-        });
-
-        [elements.desktopComposer, elements.mobileComposer].forEach((composer) => {
-          composer.dataset.role = state.nextRole;
-        });
+        renderDesktopComposer(
+          {
+            composer: elements.desktopComposer,
+            roleButton: elements.desktopRoleLabel,
+          },
+          state.nextRole,
+        );
+        renderMobileComposer(
+          {
+            composer: elements.mobileComposer,
+            draftInput: elements.mobileDraft,
+            roleButton: elements.mobileRoleLabel,
+          },
+          state.nextRole,
+        );
 
         syncDraftInputs();
       }
 
       function handleRoleToggle() {
+        const interactionPolicy = interactionPolicyForMode();
         state = toggleNextRole(state);
         persistNow();
         renderComposer();
         focusComposer();
-        announce(`次の話者を${roleLabel(state.nextRole)}に切り替えました。発言後は自動で交替します。`);
+        const afterCommitMessage =
+          interactionPolicy.roleAfterCommit === ROLE_AFTER_COMMIT_ALTERNATE
+            ? "発言後は自動で交替します。"
+            : "発言後もこの話者を続けます。";
+        announce(`次の話者を${roleLabel(state.nextRole)}に切り替えました。${afterCommitMessage}`);
       }
 
       function handleRoleShortcut(event) {
-        const isShortcut =
-          event.ctrlKey &&
-          event.altKey &&
-          !event.shiftKey &&
-          !event.metaKey &&
-          event.key?.toLowerCase() === "m";
-
-        if (
-          !isShortcut ||
-          event.defaultPrevented ||
-          event.repeat ||
-          event.isComposing ||
-          event.keyCode === 229 ||
-          elements.editDialog.open
-        ) {
+        const command = globalCommandForKey(event, {
+          policy: interactionPolicyForMode(),
+          editorOpen: elements.editDialog.open,
+        });
+        if (command !== COMMAND_SWITCH_ROLE) {
           return;
         }
 
@@ -2776,9 +3255,14 @@
         renderComposer();
         setMode(viewMode);
 
-        if (scroll && viewMode === "mobile") {
+        if (scroll) {
           window.requestAnimationFrame(() => {
-            elements.mobileFeed.scrollTop = elements.mobileFeed.scrollHeight;
+            applyAfterCommitScroll({
+              policy: viewportPolicyForMode(),
+              feed: viewMode === "mobile" ? elements.mobileFeed : null,
+              input: viewMode === "mobile" ? elements.mobileDraft : elements.desktopDraft,
+              windowObject: window,
+            });
           });
         }
 
@@ -2789,9 +3273,7 @@
 
       function focusComposer() {
         const target = viewMode === "mobile" ? elements.mobileDraft : elements.desktopDraft;
-        target.focus({ preventScroll: viewMode === "desktop" });
-        const end = target.value.length;
-        target.setSelectionRange(end, end);
+        focusDraftInput(target, viewportPolicyForMode());
       }
 
       // 対話篇の編集操作
@@ -2811,31 +3293,12 @@
         }
 
         const committedRole = state.nextRole;
+        const interactionPolicy = interactionPolicyForSource(source);
         state = commitDraft(state);
+        state = setNextRole(state, roleAfterCommit(committedRole, interactionPolicy));
         persistNow();
         renderAll({ focus: true, scroll: true });
         announce(`${roleLabel(committedRole)}の発言を追加しました。次は${roleLabel(state.nextRole)}です。`);
-      }
-
-      function handleDesktopKeydown(event) {
-        if (event.key !== "Enter" || event.shiftKey || event.isComposing || event.keyCode === 229) {
-          return;
-        }
-
-        event.preventDefault();
-        commitCurrentDraft(elements.desktopDraft);
-      }
-
-      function handleMobileKeydown(event) {
-        if (
-          event.key === "Enter" &&
-          (event.ctrlKey || event.metaKey) &&
-          !event.isComposing &&
-          event.keyCode !== 229
-        ) {
-          event.preventDefault();
-          commitCurrentDraft(elements.mobileDraft);
-        }
       }
 
       function findMessage(id) {
@@ -2894,7 +3357,13 @@
           return;
         }
 
+        const currentRole = state.nextRole;
+        const interactionPolicy = interactionPolicyForMode();
         state = deleteMessage(state, id);
+        state = setNextRole(
+          state,
+          roleAfterDelete(state.messages, currentRole, interactionPolicy),
+        );
         persistNow();
         renderAll({ focus: true });
         announce("発言を削除しました。");
@@ -2961,7 +3430,12 @@
           scroll = true,
         } = {},
       ) {
-        const imported = parseDialogue(source);
+        const imported = parseDialogue(
+          source,
+          undefined,
+          undefined,
+          (messages) => roleAfterImport(messages, interactionPolicyForMode()),
+        );
         const hasCurrentWork = state.messages.length > 0 || state.draft.trim().length > 0 || storageWriteBlocked;
         if (hasCurrentWork && !window.confirm(confirmation)) {
           return false;
@@ -3069,22 +3543,27 @@
           }
         });
 
-        elements.desktopDraft.addEventListener("input", handleDraftInput);
-        elements.desktopDraft.addEventListener("keydown", handleDesktopKeydown);
-        elements.desktopRoleLabel.addEventListener("click", handleRoleToggle);
-        elements.desktopComposer.addEventListener("submit", (event) => {
-          event.preventDefault();
-          commitCurrentDraft(elements.desktopDraft);
+        bindDesktopEditor({
+          composer: elements.desktopComposer,
+          draftInput: elements.desktopDraft,
+          roleButton: elements.desktopRoleLabel,
+          getDraft: () => state.draft,
+          interactionPolicy: desktopInteractionPolicy,
+          onDraftInput: handleDraftInput,
+          onCommit: commitCurrentDraft,
+          onSwitchRole: handleRoleToggle,
         });
 
-        elements.mobileDraft.addEventListener("input", handleDraftInput);
-        elements.mobileDraft.addEventListener("keydown", handleMobileKeydown);
-        elements.mobileFullscreenButton.addEventListener("click", toggleMobileFullscreen);
-        elements.mobileRoleLabel.addEventListener("click", handleRoleToggle);
-        elements.mobileComposer.addEventListener("submit", (event) => {
-          event.preventDefault();
-          commitCurrentDraft(elements.mobileDraft);
+        bindMobileEditor({
+          composer: elements.mobileComposer,
+          draftInput: elements.mobileDraft,
+          roleButton: elements.mobileRoleLabel,
+          interactionPolicy: mobileInteractionPolicy,
+          onDraftInput: handleDraftInput,
+          onCommit: commitCurrentDraft,
+          onSwitchRole: handleRoleToggle,
         });
+        elements.mobileFullscreenButton.addEventListener("click", toggleMobileFullscreen);
 
         elements.desktopMessages.addEventListener("click", handleMessageAction);
         elements.mobileMessages.addEventListener("click", handleMessageAction);

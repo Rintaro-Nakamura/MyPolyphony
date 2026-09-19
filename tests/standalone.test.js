@@ -119,18 +119,6 @@ test("文書表示の密度を個人用CSS変数から調整できる", async ()
   );
 });
 
-test("Ctrl + Alt + Mで次の話者を切り替えられる", async () => {
-  const html = await readFile(new URL("../index.html", import.meta.url), "utf8");
-
-  assert.doesNotMatch(html, /<kbd>Ctrl<\/kbd>＋<kbd>Alt<\/kbd>＋<kbd>M<\/kbd>/);
-  assert.match(html, /function handleRoleShortcut\(event\)/);
-  assert.match(html, /event\.ctrlKey &&\s*event\.altKey/);
-  assert.match(html, /event\.key\?\.toLowerCase\(\) === "m"/);
-  assert.match(html, /event\.repeat \|\|\s*event\.isComposing/);
-  assert.match(html, /elements\.editDialog\.open/);
-  assert.match(html, /document\.addEventListener\("keydown", handleRoleShortcut\)/);
-});
-
 test("文書上部に対話の開始日時を示す罫線付きヘッダーがある", async () => {
   const html = await readFile(new URL("../index.html", import.meta.url), "utf8");
   const paper = html.indexOf('class="paper"');
@@ -195,13 +183,17 @@ test("仕様の具体例を内蔵JSONから既存UIへ読み込める", async ()
 });
 
 test("単一HTMLの埋め込みCSSとJavaScriptを開発用ファイルに同期している", async () => {
-  const [html, styles, model, preferences, storage, view, app] = await Promise.all([
+  const [html, styles, model, preferences, storage, view, interaction, editors, viewport, app] =
+    await Promise.all([
     readFile(new URL("../index.html", import.meta.url), "utf8"),
     readFile(new URL("../styles.css", import.meta.url), "utf8"),
     readFile(new URL("../model.js", import.meta.url), "utf8"),
     readFile(new URL("../preferences.js", import.meta.url), "utf8"),
     readFile(new URL("../storage.js", import.meta.url), "utf8"),
     readFile(new URL("../view.js", import.meta.url), "utf8"),
+    readFile(new URL("../interaction.js", import.meta.url), "utf8"),
+    readFile(new URL("../editors.js", import.meta.url), "utf8"),
+    readFile(new URL("../viewport.js", import.meta.url), "utf8"),
     readFile(new URL("../app.js", import.meta.url), "utf8"),
   ]);
   const inlineStyles = html.match(
@@ -219,7 +211,7 @@ test("単一HTMLの埋め込みCSSとJavaScriptを開発用ファイルに同期
   assert.equal(
     normalize(removeEmbeddingIndent(inlineApp[1])),
     normalize(
-      `${model.trimEnd()}\n\n${preferences.trim()}\n\n${storage.trim()}\n\n${view.trim()}\n\n${app.trimStart()}`,
+      `${model.trimEnd()}\n\n${preferences.trim()}\n\n${storage.trim()}\n\n${view.trim()}\n\n${interaction.trim()}\n\n${editors.trim()}\n\n${viewport.trim()}\n\n${app.trimStart()}`,
     ),
   );
 });
@@ -237,4 +229,7 @@ test("開発用ファイルから単一HTMLを生成するコマンドを備え�
   assert.match(buildSource, /readProjectFile\("preferences\.js"\)/);
   assert.match(buildSource, /readProjectFile\("storage\.js"\)/);
   assert.match(buildSource, /readProjectFile\("view\.js"\)/);
+  assert.match(buildSource, /readProjectFile\("interaction\.js"\)/);
+  assert.match(buildSource, /readProjectFile\("editors\.js"\)/);
+  assert.match(buildSource, /readProjectFile\("viewport\.js"\)/);
 });

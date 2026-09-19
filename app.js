@@ -1,8 +1,6 @@
 (() => {
 const {
   MODE_STORAGE_KEY,
-  ROLE_OTHER,
-  ROLE_SELF,
   STORAGE_KEY,
   commitDraft,
   createExportBasename,
@@ -15,6 +13,7 @@ const {
   serializeDialogue,
   serializePlainText,
   serializeStoredState,
+  setNextRole,
   toggleNextRole,
   updateDraft,
 } = globalThis.MyPolyphonyModel;
@@ -32,10 +31,34 @@ const {
   createDesktopMessage,
   createMobileMessage,
   formatDialogueStartedAt,
+  renderDesktopComposer,
+  renderMobileComposer,
   roleLabel,
 } = globalThis.MyPolyphonyView;
+const {
+  ALTERNATING_INTERACTION_POLICY,
+  COMMAND_SWITCH_ROLE,
+  ROLE_AFTER_COMMIT_ALTERNATE,
+  globalCommandForKey,
+  roleAfterCommit,
+  roleAfterDelete,
+  roleAfterImport,
+} = globalThis.MyPolyphonyInteraction;
+const { bindDesktopEditor, bindMobileEditor } = globalThis.MyPolyphonyEditors;
+const {
+  CHAT_MOBILE_VIEWPORT_POLICY,
+  STATIC_DESKTOP_VIEWPORT_POLICY,
+  applyAfterCommitScroll,
+  focusDraftInput,
+} = globalThis.MyPolyphonyViewport;
 
 const elements = collectElements(document);
+
+// 各表示で採用する操作方針。共有データを変えず、表示ごとに別方針へ交換できる。
+const desktopInteractionPolicy = ALTERNATING_INTERACTION_POLICY;
+const mobileInteractionPolicy = ALTERNATING_INTERACTION_POLICY;
+const desktopViewportPolicy = STATIC_DESKTOP_VIEWPORT_POLICY;
+const mobileViewportPolicy = CHAT_MOBILE_VIEWPORT_POLICY;
 
 // アプリの一時状態。保存される対話データの形は model.js が定義する。
 const mobileMedia = window.matchMedia("(max-width: 767px)");
@@ -48,6 +71,20 @@ let saveTimer = null;
 let toastTimer = null;
 let storageWriteBlocked = false;
 let immersiveMode = "off";
+
+function interactionPolicyForMode(mode = viewMode) {
+  return mode === "mobile" ? mobileInteractionPolicy : desktopInteractionPolicy;
+}
+
+function interactionPolicyForSource(source) {
+  return source === elements.mobileDraft
+    ? mobileInteractionPolicy
+    : desktopInteractionPolicy;
+}
+
+function viewportPolicyForMode(mode = viewMode) {
+  return mode === "mobile" ? mobileViewportPolicy : desktopViewportPolicy;
+}
 
 // 設定と初期状態の復元
 function applyFontPreference(value) {
@@ -371,51 +408,44 @@ function renderNoteHeader() {
 }
 
 function renderComposer() {
-  const label = roleLabel(state.nextRole);
-  const alternateLabel = roleLabel(state.nextRole === ROLE_SELF ? ROLE_OTHER : ROLE_SELF);
-  elements.desktopRoleLabel.textContent = `次は ${label}`;
-  elements.mobileRoleLabel.textContent = `次は${label}`;
-  elements.mobileDraft.placeholder = `${label}として書く`;
-
-  [elements.desktopRoleLabel, elements.mobileRoleLabel].forEach((button) => {
-    button.setAttribute(
-      "aria-label",
-      `次の話者は${label}です。クリックすると${alternateLabel}に切り替わります。`,
-    );
-    button.title = `クリックで「次は${alternateLabel}」に切り替え`;
-  });
-
-  [elements.desktopComposer, elements.mobileComposer].forEach((composer) => {
-    composer.dataset.role = state.nextRole;
-  });
+  renderDesktopComposer(
+    {
+      composer: elements.desktopComposer,
+      roleButton: elements.desktopRoleLabel,
+    },
+    state.nextRole,
+  );
+  renderMobileComposer(
+    {
+      composer: elements.mobileComposer,
+      draftInput: elements.mobileDraft,
+      roleButton: elements.mobileRoleLabel,
+    },
+    state.nextRole,
+  );
 
   syncDraftInputs();
 }
 
 function handleRoleToggle() {
+  const interactionPolicy = interactionPolicyForMode();
   state = toggleNextRole(state);
   persistNow();
   renderComposer();
   focusComposer();
-  announce(`次の話者を${roleLabel(state.nextRole)}に切り替えました。発言後は自動で交替します。`);
+  const afterCommitMessage =
+    interactionPolicy.roleAfterCommit === ROLE_AFTER_COMMIT_ALTERNATE
+      ? "発言後は自動で交替します。"
+      : "発言後もこの話者を続けます。";
+  announce(`次の話者を${roleLabel(state.nextRole)}に切り替えました。${afterCommitMessage}`);
 }
 
 function handleRoleShortcut(event) {
-  const isShortcut =
-    event.ctrlKey &&
-    event.altKey &&
-    !event.shiftKey &&
-    !event.metaKey &&
-    event.key?.toLowerCase() === "m";
-
-  if (
-    !isShortcut ||
-    event.defaultPrevented ||
-    event.repeat ||
-    event.isComposing ||
-    event.keyCode === 229 ||
-    elements.editDialog.open
-  ) {
+  const command = globalCommandForKey(event, {
+    policy: interactionPolicyForMode(),
+    editorOpen: elements.editDialog.open,
+  });
+  if (command !== COMMAND_SWITCH_ROLE) {
     return;
   }
 
@@ -429,9 +459,14 @@ function renderAll({ focus = false, scroll = false } = {}) {
   renderComposer();
   setMode(viewMode);
 
-  if (scroll && viewMode === "mobile") {
+  if (scroll) {
     window.requestAnimationFrame(() => {
-      elements.mobileFeed.scrollTop = elements.mobileFeed.scrollHeight;
+      applyAfterCommitScroll({
+        policy: viewportPolicyForMode(),
+        feed: viewMode === "mobile" ? elements.mobileFeed : null,
+        input: viewMode === "mobile" ? elements.mobileDraft : elements.desktopDraft,
+        windowObject: window,
+      });
     });
   }
 
@@ -442,9 +477,7 @@ function renderAll({ focus = false, scroll = false } = {}) {
 
 function focusComposer() {
   const target = viewMode === "mobile" ? elements.mobileDraft : elements.desktopDraft;
-  target.focus({ preventScroll: viewMode === "desktop" });
-  const end = target.value.length;
-  target.setSelectionRange(end, end);
+  focusDraftInput(target, viewportPolicyForMode());
 }
 
 // 対話篇の編集操作
@@ -464,31 +497,12 @@ function commitCurrentDraft(source) {
   }
 
   const committedRole = state.nextRole;
+  const interactionPolicy = interactionPolicyForSource(source);
   state = commitDraft(state);
+  state = setNextRole(state, roleAfterCommit(committedRole, interactionPolicy));
   persistNow();
   renderAll({ focus: true, scroll: true });
   announce(`${roleLabel(committedRole)}の発言を追加しました。次は${roleLabel(state.nextRole)}です。`);
-}
-
-function handleDesktopKeydown(event) {
-  if (event.key !== "Enter" || event.shiftKey || event.isComposing || event.keyCode === 229) {
-    return;
-  }
-
-  event.preventDefault();
-  commitCurrentDraft(elements.desktopDraft);
-}
-
-function handleMobileKeydown(event) {
-  if (
-    event.key === "Enter" &&
-    (event.ctrlKey || event.metaKey) &&
-    !event.isComposing &&
-    event.keyCode !== 229
-  ) {
-    event.preventDefault();
-    commitCurrentDraft(elements.mobileDraft);
-  }
 }
 
 function findMessage(id) {
@@ -547,7 +561,13 @@ function removeMessage(id) {
     return;
   }
 
+  const currentRole = state.nextRole;
+  const interactionPolicy = interactionPolicyForMode();
   state = deleteMessage(state, id);
+  state = setNextRole(
+    state,
+    roleAfterDelete(state.messages, currentRole, interactionPolicy),
+  );
   persistNow();
   renderAll({ focus: true });
   announce("発言を削除しました。");
@@ -614,7 +634,12 @@ function loadDialogueSource(
     scroll = true,
   } = {},
 ) {
-  const imported = parseDialogue(source);
+  const imported = parseDialogue(
+    source,
+    undefined,
+    undefined,
+    (messages) => roleAfterImport(messages, interactionPolicyForMode()),
+  );
   const hasCurrentWork = state.messages.length > 0 || state.draft.trim().length > 0 || storageWriteBlocked;
   if (hasCurrentWork && !window.confirm(confirmation)) {
     return false;
@@ -722,22 +747,27 @@ function bindEvents() {
     }
   });
 
-  elements.desktopDraft.addEventListener("input", handleDraftInput);
-  elements.desktopDraft.addEventListener("keydown", handleDesktopKeydown);
-  elements.desktopRoleLabel.addEventListener("click", handleRoleToggle);
-  elements.desktopComposer.addEventListener("submit", (event) => {
-    event.preventDefault();
-    commitCurrentDraft(elements.desktopDraft);
+  bindDesktopEditor({
+    composer: elements.desktopComposer,
+    draftInput: elements.desktopDraft,
+    roleButton: elements.desktopRoleLabel,
+    getDraft: () => state.draft,
+    interactionPolicy: desktopInteractionPolicy,
+    onDraftInput: handleDraftInput,
+    onCommit: commitCurrentDraft,
+    onSwitchRole: handleRoleToggle,
   });
 
-  elements.mobileDraft.addEventListener("input", handleDraftInput);
-  elements.mobileDraft.addEventListener("keydown", handleMobileKeydown);
-  elements.mobileFullscreenButton.addEventListener("click", toggleMobileFullscreen);
-  elements.mobileRoleLabel.addEventListener("click", handleRoleToggle);
-  elements.mobileComposer.addEventListener("submit", (event) => {
-    event.preventDefault();
-    commitCurrentDraft(elements.mobileDraft);
+  bindMobileEditor({
+    composer: elements.mobileComposer,
+    draftInput: elements.mobileDraft,
+    roleButton: elements.mobileRoleLabel,
+    interactionPolicy: mobileInteractionPolicy,
+    onDraftInput: handleDraftInput,
+    onCommit: commitCurrentDraft,
+    onSwitchRole: handleRoleToggle,
   });
+  elements.mobileFullscreenButton.addEventListener("click", toggleMobileFullscreen);
 
   elements.desktopMessages.addEventListener("click", handleMessageAction);
   elements.mobileMessages.addEventListener("click", handleMessageAction);

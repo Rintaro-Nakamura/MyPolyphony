@@ -53,6 +53,29 @@ function formatDialogueStartedAt(value) {
   return `${date.getMonth() + 1} 月 ${date.getDate()} 日（${weekday}）　${date.getHours()} 時 ${minute} 分`;
 }
 
+function renderRoleButton(button, role, { compact = false } = {}) {
+  const label = roleLabel(role);
+  const alternateLabel = roleLabel(role === "self" ? "other" : "self");
+  button.textContent = compact ? `次は${label}` : `次は ${label}`;
+  button.setAttribute(
+    "aria-label",
+    `次の話者は${label}です。クリックすると${alternateLabel}に切り替わります。`,
+  );
+  button.title = `クリックで「次は${alternateLabel}」に切り替え`;
+}
+
+function renderDesktopComposer({ composer, roleButton }, role) {
+  renderRoleButton(roleButton, role);
+  composer.dataset.role = role;
+}
+
+function renderMobileComposer({ composer, draftInput, roleButton }, role) {
+  const label = roleLabel(role);
+  renderRoleButton(roleButton, role, { compact: true });
+  draftInput.placeholder = `${label}として書く`;
+  composer.dataset.role = role;
+}
+
 function autoGrow(textarea) {
   textarea.style.height = "0px";
   const maximum = textarea.id === "mobileDraft" ? 132 : 240;
@@ -132,6 +155,8 @@ globalThis.MyPolyphonyView = Object.freeze({
   createDesktopMessage,
   createMobileMessage,
   formatDialogueStartedAt,
+  renderDesktopComposer,
+  renderMobileComposer,
   roleLabel,
 });
 })();

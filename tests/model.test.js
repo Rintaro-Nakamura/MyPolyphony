@@ -17,6 +17,7 @@ const {
   serializeDialogue,
   serializePlainText,
   serializeStoredState,
+  setNextRole,
   toggleNextRole,
   updateDraft,
 } = globalThis.MyPolyphonyModel;
@@ -26,7 +27,7 @@ const ids = (...values) => {
   return () => queue.shift();
 };
 
-test("発言を確定するたびに話者が交替する", () => {
+test("発言の確定は選択中の話者を記録し、話者選択そのものは維持する", () => {
   let state = createInitialState();
   state = updateDraft(state, "最初の声");
   state = commitDraft(state, ids("m1"));
@@ -37,29 +38,32 @@ test("発言を確定するたびに話者が交替する", () => {
     state.messages.map(({ role, text }) => ({ role, text })),
     [
       { role: ROLE_SELF, text: "最初の声" },
-      { role: ROLE_OTHER, text: "もう一つの声" },
+      { role: ROLE_SELF, text: "もう一つの声" },
     ],
   );
   assert.equal(state.nextRole, ROLE_SELF);
   assert.equal(state.draft, "");
 });
 
-test("次の話者を手動変更しても、発言後は自動で交替する", () => {
+test("話者選択は発言確定から独立して変更できる", () => {
   let state = createInitialState();
   state = updateDraft(state, "最初の自分の声");
   state = commitDraft(state, ids("m1"));
-  assert.equal(state.nextRole, ROLE_OTHER);
-
-  state = toggleNextRole(state);
   assert.equal(state.nextRole, ROLE_SELF);
 
-  state = updateDraft(state, "続けて自分の声");
-  state = commitDraft(state, ids("m2"));
-  assert.deepEqual(state.messages.map(({ role }) => role), [ROLE_SELF, ROLE_SELF]);
+  state = toggleNextRole(state);
   assert.equal(state.nextRole, ROLE_OTHER);
+
+  state = updateDraft(state, "相手の声");
+  state = commitDraft(state, ids("m2"));
+  assert.deepEqual(state.messages.map(({ role }) => role), [ROLE_SELF, ROLE_OTHER]);
+  assert.equal(state.nextRole, ROLE_OTHER);
+
+  state = setNextRole(state, ROLE_SELF);
+  assert.equal(state.nextRole, ROLE_SELF);
 });
 
-test("編集は話者を変えず、削除後の次話者は最後の発言から決まる", () => {
+test("編集と削除は現在選択中の話者を変えない", () => {
   const state = {
     messages: [
       { id: "m1", role: ROLE_SELF, text: "自分の声" },
@@ -67,7 +71,7 @@ test("編集は話者を変えず、削除後の次話者は最後の発言か�
       { id: "m3", role: ROLE_SELF, text: "続き" },
     ],
     draft: "途中",
-    nextRole: ROLE_OTHER,
+    nextRole: ROLE_SELF,
   };
 
   const edited = editMessage(state, "m2", "編集した相手の声");
@@ -76,7 +80,7 @@ test("編集は話者を変えず、削除後の次話者は最後の発言か�
 
   const deleted = deleteMessage(edited, "m2");
   assert.deepEqual(deleted.messages.map(({ id }) => id), ["m1", "m3"]);
-  assert.equal(deleted.nextRole, ROLE_OTHER);
+  assert.equal(deleted.nextRole, ROLE_SELF);
   assert.equal(deleted.draft, "途中");
 });
 
@@ -174,6 +178,21 @@ test("JSONは話者、順序、改行を保って往復する", () => {
   );
   assert.equal(restored.nextRole, ROLE_SELF);
   assert.equal(restored.startedAt, startedAt.toISOString());
+});
+
+test("JSON読み込み後の話者は呼び出し側の方針で決められる", () => {
+  const json = serializeDialogue(
+    [{ id: "m1", role: ROLE_SELF, text: "読み込む発言" }],
+    new Date("2026-08-06T12:00:00.000Z"),
+  );
+  const restored = parseDialogue(
+    json,
+    ids("r1"),
+    new Date("2026-08-07T08:09:00.000Z"),
+    () => ROLE_SELF,
+  );
+
+  assert.equal(restored.nextRole, ROLE_SELF);
 });
 
 test("壊れたJSONと未対応バージョンを拒否する", () => {

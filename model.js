@@ -110,7 +110,6 @@ function commitDraft(state, idFactory = createId) {
     ...state,
     messages: [...state.messages, message],
     draft: "",
-    nextRole: oppositeRole(state.nextRole),
   };
 }
 
@@ -133,6 +132,17 @@ function toggleNextRole(state) {
   return {
     ...state,
     nextRole: oppositeRole(state.nextRole),
+  };
+}
+
+function setNextRole(state, nextRole) {
+  if (!state || typeof state !== "object" || !isRole(nextRole)) {
+    throw new TypeError("次の話者が正しくありません。");
+  }
+
+  return {
+    ...state,
+    nextRole,
   };
 }
 
@@ -172,7 +182,6 @@ function deleteMessage(state, id) {
   return {
     ...state,
     messages,
-    nextRole: nextRoleFromMessages(messages),
   };
 }
 
@@ -250,7 +259,16 @@ function serializeDialogue(messages, exportedAt = new Date()) {
   return `${JSON.stringify(createDialogueExport(messages, exportedAt), null, 2)}\n`;
 }
 
-function parseDialogue(source, idFactory = createId, startedAt = new Date()) {
+function parseDialogue(
+  source,
+  idFactory = createId,
+  startedAt = new Date(),
+  nextRoleResolver = nextRoleFromMessages,
+) {
+  if (typeof nextRoleResolver !== "function") {
+    throw new TypeError("読み込み後の話者決定方法が正しくありません。");
+  }
+
   const data = JSON.parse(source);
 
   if (!data || typeof data !== "object" || Array.isArray(data)) {
@@ -280,11 +298,15 @@ function parseDialogue(source, idFactory = createId, startedAt = new Date()) {
     role: message.role,
     text: normalizeText(message.text),
   }));
+  const nextRole = nextRoleResolver(messages);
+  if (!isRole(nextRole)) {
+    throw new TypeError("読み込み後の話者が正しくありません。");
+  }
 
   return {
     messages,
     draft: "",
-    nextRole: nextRoleFromMessages(messages),
+    nextRole,
     startedAt: normalizeStartedAt(startedAt),
   };
 }
@@ -337,6 +359,7 @@ globalThis.MyPolyphonyModel = Object.freeze({
   commitDraft,
   updateDraft,
   toggleNextRole,
+  setNextRole,
   editMessage,
   deleteMessage,
   serializeStoredState,
