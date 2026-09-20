@@ -4,9 +4,12 @@
   "private": true,
   "type": "module",
   "scripts": {
-    "build": "node scripts/build-standalone.mjs",
-    "test": "node --test",
-    "check:standalone": "node scripts/build-standalone.mjs --check",
-    "check": "node --check app.js && node --check model.js && node --check preferences.js && node --check storage.js && node --check view.js && node --check interaction.js && node --check editors.js && node --check viewport.js && node --check scripts/build-standalone.mjs && node --test && node scripts/build-standalone.mjs --check"
+    "build:release": "node scripts/build-standalone.mjs",
+    "test": "npm run test:functional",
+    "test:functional": "node --test tests/model.test.js tests/preferences.test.js tests/storage.test.js tests/interaction.test.js tests/editors.test.js tests/viewport.test.js",
+    "test:structure": "node --test tests/view.test.js tests/structure.test.js",
+    "test:release": "node --test tests/release.test.js",
+    "check:release": "node scripts/build-standalone.mjs --check && npm run test:release",
+    "check": "node --check app.js && node --check model.js && node --check preferences.js && node --check storage.js && node --check view.js && node --check interaction.js && node --check editors.js && node --check viewport.js && node --check scripts/build-standalone.mjs && npm run test:functional && npm run test:structure"
   }
 }
