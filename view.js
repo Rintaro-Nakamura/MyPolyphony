@@ -31,12 +31,6 @@ function collectElements(root) {
     mobileDraft: root.querySelector("#mobileDraft"),
     mobileFullscreenButton: root.querySelector("#mobileFullscreenButton"),
     mobileRoleLabel: root.querySelector("#mobileRoleLabel"),
-    editDialog: root.querySelector("#editDialog"),
-    editForm: root.querySelector("#editForm"),
-    editText: root.querySelector("#editText"),
-    editRoleLabel: root.querySelector("#editRoleLabel"),
-    closeEditButton: root.querySelector("#closeEditButton"),
-    cancelEditButton: root.querySelector("#cancelEditButton"),
     toast: root.querySelector("#toast"),
     liveRegion: root.querySelector("#liveRegion"),
   };
@@ -82,26 +76,6 @@ function autoGrow(textarea) {
   textarea.style.height = `${Math.min(textarea.scrollHeight, maximum)}px`;
 }
 
-function makeActionButton(label, action, id, root) {
-  const button = root.createElement("button");
-  button.type = "button";
-  button.className = `message-action message-action--${action}`;
-  button.dataset.action = action;
-  button.dataset.id = id;
-  button.textContent = label;
-  return button;
-}
-
-function createMessageActions(message, root, className = "message-actions") {
-  const actions = root.createElement("div");
-  actions.className = className;
-  actions.append(
-    makeActionButton("編集", "edit", message.id, root),
-    makeActionButton("削除", "delete", message.id, root),
-  );
-  return actions;
-}
-
 function createDesktopMessage(message, index, root = globalThis.document) {
   const article = root.createElement("article");
   article.className = `desktop-message desktop-message--${message.role}`;
@@ -117,10 +91,17 @@ function createDesktopMessage(message, index, root = globalThis.document) {
   content.className = "desktop-message__content";
   content.append(root.createTextNode("「"));
   const text = root.createElement("span");
+  text.className = "desktop-message__text";
+  text.dataset.messageId = message.id;
+  text.contentEditable = "plaintext-only";
+  text.spellcheck = true;
+  text.setAttribute("role", "textbox");
+  text.setAttribute("aria-multiline", "false");
+  text.setAttribute("aria-label", `${roleLabel(message.role)}の発言本文`);
   text.textContent = message.text;
   content.append(text, root.createTextNode("」"));
 
-  article.append(number, content, createMessageActions(message, root));
+  article.append(number, content);
   return article;
 }
 
@@ -138,13 +119,10 @@ function createMobileMessage(message, index, root = globalThis.document) {
   speaker.textContent = `${roleLabel(message.role)}：`;
 
   const content = root.createElement("p");
+  content.className = "mobile-message__content";
   content.textContent = message.text;
 
-  bubble.append(
-    speaker,
-    content,
-    createMessageActions(message, root, "message-actions mobile-message__actions"),
-  );
+  bubble.append(speaker, content);
   article.append(bubble);
   return article;
 }

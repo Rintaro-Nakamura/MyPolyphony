@@ -3,12 +3,17 @@ const {
   COMMAND_COMMIT,
   COMMAND_COMMIT_PRESERVE_ROLE,
   COMMAND_NONE,
+  COMMAND_REOPEN_PREVIOUS,
   COMMAND_SWITCH_ROLE,
   desktopCommandForKey,
   mobileCommandForKey,
 } = globalThis.MyPolyphonyInteraction;
 
-function executeEditorCommand(command, event, { source, onCommit, onSwitchRole }) {
+function executeEditorCommand(
+  command,
+  event,
+  { source, onCommit, onReopenPrevious, onSwitchRole },
+) {
   if (command === COMMAND_NONE) {
     return false;
   }
@@ -20,6 +25,10 @@ function executeEditorCommand(command, event, { source, onCommit, onSwitchRole }
   }
   if (command === COMMAND_SWITCH_ROLE) {
     onSwitchRole({ source, preserveSelection: true });
+    return true;
+  }
+  if (command === COMMAND_REOPEN_PREVIOUS) {
+    onReopenPrevious(source);
     return true;
   }
 
@@ -34,6 +43,7 @@ function bindDesktopEditor({
   interactionPolicy,
   onDraftInput,
   onCommit,
+  onReopenPrevious,
   onSwitchRole,
 }) {
   const handleKeydown = (event) => {
@@ -41,6 +51,7 @@ function bindDesktopEditor({
     executeEditorCommand(command, event, {
       source: draftInput,
       onCommit,
+      onReopenPrevious,
       onSwitchRole,
     });
   };

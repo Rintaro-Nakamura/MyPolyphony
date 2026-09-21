@@ -11,13 +11,18 @@ const {
   createInitialState,
   deleteMessage,
   editMessage,
+  mergeMessageBackward,
+  mergeMessageForward,
   parseDialogue,
   parseStoredState,
+  pullLastMessageIntoDraft,
   refreshStartedAtIfEmpty,
   serializeDialogue,
   serializePlainText,
   serializeStoredState,
   setNextRole,
+  setMessageRole,
+  splitMessage,
   toggleNextRole,
   updateDraft,
 } = globalThis.MyPolyphonyModel;
@@ -82,6 +87,104 @@ test("編集と削除は現在選択中の話者を変えない", () => {
   assert.deepEqual(deleted.messages.map(({ id }) => id), ["m1", "m3"]);
   assert.equal(deleted.nextRole, ROLE_SELF);
   assert.equal(deleted.draft, "途中");
+});
+
+test("紙面上の発言は空文字まで直接編集できる", () => {
+  const state = {
+    messages: [{ id: "m1", role: ROLE_SELF, text: "消してよい発言" }],
+    draft: "残す下書き",
+    nextRole: ROLE_OTHER,
+  };
+
+  const edited = editMessage(state, "m1", "");
+
+  assert.equal(edited.messages[0].text, "");
+  assert.equal(edited.draft, "残す下書き");
+  assert.equal(edited.nextRole, ROLE_OTHER);
+  assert.doesNotThrow(() => serializeStoredState({
+    ...edited,
+    startedAt: "2026-08-07T12:34:00.000Z",
+  }));
+});
+
+test("発言は選択範囲を境として分かれ、空の括弧も保持する", () => {
+  const state = {
+    messages: [{ id: "m1", role: ROLE_SELF, text: "あいうえお" }],
+    draft: "途中の下書き",
+    nextRole: ROLE_SELF,
+  };
+
+  const split = splitMessage(state, "m1", 2, 3, ROLE_OTHER, ids("m2"));
+  assert.deepEqual(split.messages, [
+    { id: "m1", role: ROLE_SELF, text: "あい" },
+    { id: "m2", role: ROLE_OTHER, text: "えお" },
+  ]);
+  assert.equal(split.draft, "途中の下書き");
+  assert.equal(split.nextRole, ROLE_SELF);
+
+  const atEnd = splitMessage(split, "m2", 2, 2, ROLE_OTHER, ids("m3"));
+  assert.deepEqual(atEnd.messages.at(-1), {
+    id: "m3",
+    role: ROLE_OTHER,
+    text: "",
+  });
+});
+
+test("発言境界の削除は直前または現在の話者へ本文を統合する", () => {
+  const state = {
+    messages: [
+      { id: "m1", role: ROLE_SELF, text: "現在はさ" },
+      { id: "m2", role: ROLE_OTHER, text: "うん" },
+      { id: "m3", role: ROLE_SELF, text: "こうなっているじゃん？" },
+    ],
+    draft: "残す下書き",
+    nextRole: ROLE_OTHER,
+  };
+
+  const backward = mergeMessageBackward(state, "m3");
+  assert.deepEqual(backward.messages.at(-1), {
+    id: "m2",
+    role: ROLE_OTHER,
+    text: "うんこうなっているじゃん？",
+  });
+
+  const forward = mergeMessageForward(state, "m1");
+  assert.deepEqual(forward.messages[0], {
+    id: "m1",
+    role: ROLE_SELF,
+    text: "現在はさうん",
+  });
+  assert.equal(forward.draft, "残す下書き");
+  assert.equal(forward.nextRole, ROLE_OTHER);
+});
+
+test("過去の末尾発言は本文と話者を保ったまま下書きへ戻せる", () => {
+  const state = {
+    messages: [
+      { id: "m1", role: ROLE_SELF, text: "現在はさ" },
+      { id: "m2", role: ROLE_OTHER, text: "うん" },
+    ],
+    draft: "",
+    nextRole: ROLE_SELF,
+  };
+
+  const reopened = pullLastMessageIntoDraft(state);
+  assert.deepEqual(reopened.messages.map(({ id }) => id), ["m1"]);
+  assert.equal(reopened.draft, "うん");
+  assert.equal(reopened.nextRole, ROLE_OTHER);
+});
+
+test("紙面上のTabは対象発言の話者だけを変更する", () => {
+  const state = {
+    messages: [{ id: "m1", role: ROLE_SELF, text: "発言" }],
+    draft: "下書き",
+    nextRole: ROLE_SELF,
+  };
+
+  const changed = setMessageRole(state, "m1", ROLE_OTHER);
+  assert.equal(changed.messages[0].role, ROLE_OTHER);
+  assert.equal(changed.draft, "下書き");
+  assert.equal(changed.nextRole, ROLE_SELF);
 });
 
 test("端末内保存は発言、下書き、次話者、開始日時を復元する", () => {

@@ -58,6 +58,7 @@ test("PC版エディタはキー解釈とアプリ操作を接続する", () => 
     interactionPolicy: MANUAL_SWITCH_INTERACTION_POLICY,
     onDraftInput: () => calls.push("input"),
     onCommit: (source) => calls.push(["commit", source]),
+    onReopenPrevious: (source) => calls.push(["reopen", source]),
     onSwitchRole: () => calls.push("switch"),
   });
 
@@ -74,6 +75,11 @@ test("PC版エディタはキー解釈とアプリ操作を接続する", () => 
 
   roleButton.listeners.get("click")();
   assert.equal(calls.at(-1), "switch");
+
+  const backspace = keyEvent("Backspace");
+  draftInput.listeners.get("keydown")(backspace);
+  assert.equal(backspace.prevented, true);
+  assert.deepEqual(calls.at(-1), ["reopen", draftInput]);
 });
 
 test("PC版とスマートフォン版はそれぞれの確定キーを解釈する", () => {
@@ -119,6 +125,7 @@ test("対話入力方針の命令を確定処理と話者切替へ渡す", () =>
     interactionPolicy: DIALOGUE_ENTER_INTERACTION_POLICY,
     onDraftInput: () => {},
     onCommit: (source, command) => calls.push(["commit", source, command]),
+    onReopenPrevious: () => calls.push(["reopen"]),
     onSwitchRole: (options) => calls.push(["switch", options]),
   });
 

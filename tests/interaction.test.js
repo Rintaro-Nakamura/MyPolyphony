@@ -17,6 +17,7 @@ const {
   COMMAND_COMMIT,
   COMMAND_COMMIT_PRESERVE_ROLE,
   COMMAND_NONE,
+  COMMAND_REOPEN_PREVIOUS,
   COMMAND_SWITCH_ROLE,
   DIALOGUE_ENTER_INTERACTION_POLICY,
   MANUAL_SWITCH_INTERACTION_POLICY,
@@ -257,6 +258,41 @@ test("対話入力方針は下書きの有無にかかわらずTabで話者を�
       DIALOGUE_ENTER_INTERACTION_POLICY,
     ),
     COMMAND_SWITCH_ROLE,
+  );
+});
+
+test("PC版の空の下書きでBackspaceを押すと直前の発言を開き直す", () => {
+  assert.equal(
+    desktopCommandForKey(
+      keyEvent("Backspace"),
+      "",
+      DIALOGUE_ENTER_INTERACTION_POLICY,
+    ),
+    COMMAND_REOPEN_PREVIOUS,
+  );
+  assert.equal(
+    desktopCommandForKey(
+      keyEvent("Backspace", { repeat: true }),
+      "",
+      DIALOGUE_ENTER_INTERACTION_POLICY,
+    ),
+    COMMAND_REOPEN_PREVIOUS,
+  );
+  assert.equal(
+    desktopCommandForKey(
+      keyEvent("Backspace"),
+      " ",
+      DIALOGUE_ENTER_INTERACTION_POLICY,
+    ),
+    COMMAND_NONE,
+  );
+  assert.equal(
+    desktopCommandForKey(
+      keyEvent("Backspace", { isComposing: true }),
+      "",
+      DIALOGUE_ENTER_INTERACTION_POLICY,
+    ),
+    COMMAND_NONE,
   );
 });
 
