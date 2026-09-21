@@ -53,6 +53,24 @@ test("文書表示の主要な操作要素を備えている", async () => {
   assert.doesNotMatch(html, /<button[^>]*>発言を置く<\/button>/);
 });
 
+test("Enterキーの説明は話者交代と話者継続の状態を動的に示す", async () => {
+  const [html, app] = await Promise.all([
+    readProjectFile("dev.html"),
+    readProjectFile("app.js"),
+  ]);
+
+  assert.match(html, /id="desktopHintAlternate"/);
+  assert.match(html, /id="desktopHintPreserve" hidden/);
+  assert.match(html, /Shift<\/kbd>を2回押して<kbd>Enter<\/kbd>の働きを切替/);
+  assert.match(app, /elements\.desktopHintAlternate\.hidden = preservesRole/);
+  assert.match(app, /elements\.desktopHintPreserve\.hidden = !preservesRole/);
+  assert.match(app, /getInteractionPolicy: \(\) => interactionPolicyForMode\("desktop"\)/);
+  assert.match(
+    app,
+    /function handleInlineMessageKeydown[\s\S]*?interactionPolicyForMode\("desktop"\)/,
+  );
+});
+
 test("文書表示は入力欄全体が見える位置まで必要な分だけ追従する", async () => {
   const app = await readProjectFile("app.js");
   const css = await readProjectFile("structure.css");

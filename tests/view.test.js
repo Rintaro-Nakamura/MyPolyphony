@@ -98,5 +98,6 @@ test("文書の発言本文そのものを編集可能な要素として描画�
   assert.equal(editor.contentEditable, "plaintext-only");
   assert.equal(editor.textContent, "紙面上の言葉");
   assert.equal(editor.attributes.role, "textbox");
+  assert.equal(editor.attributes["aria-describedby"], "desktopHint");
   assert.equal(article.children.length, 2, "編集・削除ボタンは発言に付けない");
 });

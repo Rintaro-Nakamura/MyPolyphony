@@ -24,10 +24,15 @@ const {
   updateDraft,
 } = globalThis.MyPolyphonyModel;
 const {
+  DEFAULT_ENTER_BEHAVIOR,
   DEFAULT_FONT_PREFERENCE,
+  ENTER_BEHAVIOR_ALTERNATE,
+  ENTER_BEHAVIOR_PRESERVE,
+  ENTER_BEHAVIOR_STORAGE_KEY,
   FONT_PREFERENCE_LABELS,
   FONT_STORAGE_KEY,
   isViewMode,
+  normalizeEnterBehavior,
   normalizeFontPreference,
 } = globalThis.MyPolyphonyPreferences;
 const { readStorage, removeStorage, writeStorage } = globalThis.MyPolyphonyStorage;
@@ -46,7 +51,8 @@ const {
   COMMAND_COMMIT_PRESERVE_ROLE,
   COMMAND_SWITCH_ROLE,
   DIALOGUE_ENTER_INTERACTION_POLICY,
-  ROLE_AFTER_COMMIT_ALTERNATE,
+  DIALOGUE_ENTER_PRESERVE_INTERACTION_POLICY,
+  createShiftDoubleTapDetector,
   desktopCommandForKey,
   globalCommandForKey,
   roleAfterCommit,
@@ -77,10 +83,17 @@ const desktopCaretNavigation = createDesktopCaretNavigation({
     });
   },
 });
+const shiftDoubleTapDetector = createShiftDoubleTapDetector();
 
 // 各表示で採用する操作方針。共有データを変えず、表示ごとに別方針へ交換できる。
-const desktopInteractionPolicy = DIALOGUE_ENTER_INTERACTION_POLICY;
-const mobileInteractionPolicy = DIALOGUE_ENTER_INTERACTION_POLICY;
+const desktopInteractionPolicies = Object.freeze({
+  [ENTER_BEHAVIOR_ALTERNATE]: DIALOGUE_ENTER_INTERACTION_POLICY,
+  [ENTER_BEHAVIOR_PRESERVE]: DIALOGUE_ENTER_PRESERVE_INTERACTION_POLICY,
+});
+const mobileInteractionPolicies = Object.freeze({
+  [ENTER_BEHAVIOR_ALTERNATE]: DIALOGUE_ENTER_INTERACTION_POLICY,
+  [ENTER_BEHAVIOR_PRESERVE]: DIALOGUE_ENTER_PRESERVE_INTERACTION_POLICY,
+});
 const desktopViewportPolicy = FOLLOW_INPUT_VIEWPORT_POLICY;
 const mobileViewportPolicy = CHAT_MOBILE_VIEWPORT_POLICY;
 
@@ -88,6 +101,7 @@ const mobileViewportPolicy = CHAT_MOBILE_VIEWPORT_POLICY;
 const mobileMedia = window.matchMedia("(max-width: 767px)");
 let state = createInitialState();
 let viewMode = mobileMedia.matches ? "mobile" : "desktop";
+let enterBehavior = DEFAULT_ENTER_BEHAVIOR;
 let fontPreference = DEFAULT_FONT_PREFERENCE;
 let hasManualMode = false;
 let saveTimer = null;
@@ -96,13 +110,16 @@ let storageWriteBlocked = false;
 let immersiveMode = "off";
 
 function interactionPolicyForMode(mode = viewMode) {
-  return mode === "mobile" ? mobileInteractionPolicy : desktopInteractionPolicy;
+  const policies = mode === "mobile"
+    ? mobileInteractionPolicies
+    : desktopInteractionPolicies;
+  return policies[enterBehavior];
 }
 
 function interactionPolicyForSource(source) {
-  return source === elements.mobileDraft
-    ? mobileInteractionPolicy
-    : desktopInteractionPolicy;
+  return interactionPolicyForMode(
+    source === elements.mobileDraft ? "mobile" : "desktop",
+  );
 }
 
 function viewportPolicyForMode(mode = viewMode) {
@@ -110,6 +127,45 @@ function viewportPolicyForMode(mode = viewMode) {
 }
 
 // 設定と初期状態の復元
+function renderEnterBehaviorHint() {
+  const preservesRole = enterBehavior === ENTER_BEHAVIOR_PRESERVE;
+  elements.desktopHintAlternate.hidden = preservesRole;
+  elements.desktopHintPreserve.hidden = !preservesRole;
+}
+
+function applyEnterBehavior(value) {
+  enterBehavior = normalizeEnterBehavior(value);
+  document.documentElement.dataset.enterBehavior = enterBehavior;
+  renderEnterBehaviorHint();
+}
+
+function persistEnterBehavior() {
+  const result = writeStorage(ENTER_BEHAVIOR_STORAGE_KEY, enterBehavior);
+  if (result.ok) {
+    return true;
+  }
+
+  showNotice(
+    "Enterキーの設定をこのブラウザに保存できませんでした。現在のページでは選んだ働きを利用できます。",
+    "warning",
+  );
+  console.warn(result.error);
+  return false;
+}
+
+function toggleEnterBehavior() {
+  const nextBehavior = enterBehavior === ENTER_BEHAVIOR_ALTERNATE
+    ? ENTER_BEHAVIOR_PRESERVE
+    : ENTER_BEHAVIOR_ALTERNATE;
+  applyEnterBehavior(nextBehavior);
+  const persisted = persistEnterBehavior();
+  const message = enterBehavior === ENTER_BEHAVIOR_PRESERVE
+    ? "Enterで同じ声を続けます"
+    : "Enterで次の声へ移ります";
+  showToast(persisted ? message : `${message}（保存なし）`);
+  announce(`${message}。`);
+}
+
 function applyFontPreference(value) {
   fontPreference = normalizeFontPreference(value);
   document.documentElement.dataset.dialogueFont = fontPreference;
@@ -182,6 +238,14 @@ function loadInitialState() {
     applyFontPreference(fontResult.value);
   } else {
     console.warn("書体の設定を読み込めませんでした。", fontResult.error);
+  }
+
+  applyEnterBehavior(DEFAULT_ENTER_BEHAVIOR);
+  const enterBehaviorResult = readStorage(ENTER_BEHAVIOR_STORAGE_KEY);
+  if (enterBehaviorResult.ok) {
+    applyEnterBehavior(enterBehaviorResult.value);
+  } else {
+    console.warn("Enterキーの設定を読み込めませんでした。", enterBehaviorResult.error);
   }
 }
 
@@ -451,18 +515,26 @@ function renderComposer() {
 }
 
 function handleRoleToggle({ source = null, preserveSelection = false } = {}) {
-  const interactionPolicy = interactionPolicyForMode();
   state = toggleNextRole(state);
   persistNow();
   renderComposer();
   if (!preserveSelection || document.activeElement !== source) {
     focusComposer();
   }
-  const afterCommitMessage =
-    interactionPolicy.roleAfterCommit === ROLE_AFTER_COMMIT_ALTERNATE
-      ? "発言後は自動で交替します。"
-      : "発言後もこの話者を続けます。";
+  const afterCommitMessage = enterBehavior === ENTER_BEHAVIOR_PRESERVE
+    ? "Enterで発言した後もこの話者を続けます。"
+    : "Enterで発言した後は自動で交替します。";
   announce(`次の話者を${roleLabel(state.nextRole)}に切り替えました。${afterCommitMessage}`);
+}
+
+function handleShiftDoubleTapKeydown(event) {
+  shiftDoubleTapDetector.handleKeydown(event);
+}
+
+function handleShiftDoubleTapKeyup(event) {
+  if (shiftDoubleTapDetector.handleKeyup(event)) {
+    toggleEnterBehavior();
+  }
 }
 
 function handleRoleShortcut(event) {
@@ -731,10 +803,11 @@ function handleInlineMessageKeydown(event) {
     return;
   }
 
+  const interactionPolicy = interactionPolicyForMode("desktop");
   const command = desktopCommandForKey(
     event,
     message.text,
-    desktopInteractionPolicy,
+    interactionPolicy,
   );
   if (command === COMMAND_SWITCH_ROLE) {
     event.preventDefault();
@@ -753,7 +826,7 @@ function handleInlineMessageKeydown(event) {
   const newId = createId();
   const newRole = roleAfterCommit(
     message.role,
-    desktopInteractionPolicy,
+    interactionPolicy,
     command,
   );
   state = splitMessage(
@@ -919,6 +992,10 @@ function resetDialogue() {
 
 // イベントの接続をここへ集約し、各補助モジュールを副作用から切り離す。
 function bindEvents() {
+  document.addEventListener("keydown", handleShiftDoubleTapKeydown);
+  document.addEventListener("keyup", handleShiftDoubleTapKeyup);
+  document.addEventListener("pointerdown", shiftDoubleTapDetector.reset);
+  window.addEventListener("blur", shiftDoubleTapDetector.reset);
   document.addEventListener("keydown", handleRoleShortcut);
   document.addEventListener("keydown", (event) => {
     if (event.key === "Escape" && elements.settingsMenu.open) {
@@ -957,7 +1034,7 @@ function bindEvents() {
     draftInput: elements.desktopDraft,
     roleButton: elements.desktopRoleLabel,
     getDraft: () => state.draft,
-    interactionPolicy: desktopInteractionPolicy,
+    getInteractionPolicy: () => interactionPolicyForMode("desktop"),
     onDraftInput: handleDraftInput,
     onCommit: commitCurrentDraft,
     onReopenPrevious: reopenPreviousMessage,
@@ -968,7 +1045,7 @@ function bindEvents() {
     composer: elements.mobileComposer,
     draftInput: elements.mobileDraft,
     roleButton: elements.mobileRoleLabel,
-    interactionPolicy: mobileInteractionPolicy,
+    getInteractionPolicy: () => interactionPolicyForMode("mobile"),
     onDraftInput: handleDraftInput,
     onCommit: commitCurrentDraft,
     onSwitchRole: handleRoleToggle,

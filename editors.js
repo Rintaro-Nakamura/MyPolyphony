@@ -41,13 +41,15 @@ function bindDesktopEditor({
   roleButton,
   getDraft,
   interactionPolicy,
+  getInteractionPolicy,
   onDraftInput,
   onCommit,
   onReopenPrevious,
   onSwitchRole,
 }) {
   const handleKeydown = (event) => {
-    const command = desktopCommandForKey(event, getDraft(), interactionPolicy);
+    const policy = getInteractionPolicy?.() ?? interactionPolicy;
+    const command = desktopCommandForKey(event, getDraft(), policy);
     executeEditorCommand(command, event, {
       source: draftInput,
       onCommit,
@@ -73,12 +75,14 @@ function bindMobileEditor({
   draftInput,
   roleButton,
   interactionPolicy,
+  getInteractionPolicy,
   onDraftInput,
   onCommit,
   onSwitchRole,
 }) {
   const handleKeydown = (event) => {
-    const command = mobileCommandForKey(event, interactionPolicy);
+    const policy = getInteractionPolicy?.() ?? interactionPolicy;
+    const command = mobileCommandForKey(event, policy);
     executeEditorCommand(command, event, {
       source: draftInput,
       onCommit,

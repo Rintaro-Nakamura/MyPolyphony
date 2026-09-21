@@ -21,6 +21,8 @@ function collectElements(root) {
     desktopEmpty: root.querySelector("#desktopEmpty"),
     desktopComposer: root.querySelector("#desktopComposer"),
     desktopDraft: root.querySelector("#desktopDraft"),
+    desktopHintAlternate: root.querySelector("#desktopHintAlternate"),
+    desktopHintPreserve: root.querySelector("#desktopHintPreserve"),
     desktopRoleLabel: root.querySelector("#desktopRoleLabel"),
     dialogueStartedAt: root.querySelector("#dialogueStartedAt"),
     mobileView: root.querySelector("#mobileView"),
@@ -98,6 +100,7 @@ function createDesktopMessage(message, index, root = globalThis.document) {
   text.setAttribute("role", "textbox");
   text.setAttribute("aria-multiline", "false");
   text.setAttribute("aria-label", `${roleLabel(message.role)}の発言本文`);
+  text.setAttribute("aria-describedby", "desktopHint");
   text.textContent = message.text;
   content.append(text, root.createTextNode("」"));
 

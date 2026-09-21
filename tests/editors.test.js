@@ -10,6 +10,7 @@ const {
   COMMAND_COMMIT,
   COMMAND_COMMIT_PRESERVE_ROLE,
   DIALOGUE_ENTER_INTERACTION_POLICY,
+  DIALOGUE_ENTER_PRESERVE_INTERACTION_POLICY,
   MANUAL_SWITCH_INTERACTION_POLICY,
 } = globalThis.MyPolyphonyInteraction;
 const { bindDesktopEditor, bindMobileEditor } = globalThis.MyPolyphonyEditors;
@@ -159,4 +160,31 @@ test("対話入力方針の命令を確定処理と話者切替へ渡す", () =>
 
   composer.listeners.get("submit")(keyEvent("submit"));
   assert.deepEqual(calls.at(-1), ["commit", draftInput, COMMAND_COMMIT]);
+});
+
+test("PC版エディタは接続後に変更されたEnterの方針を使用する", () => {
+  const composer = eventTarget();
+  const draftInput = eventTarget();
+  const roleButton = eventTarget();
+  const calls = [];
+  let interactionPolicy = DIALOGUE_ENTER_INTERACTION_POLICY;
+
+  bindDesktopEditor({
+    composer,
+    draftInput,
+    roleButton,
+    getDraft: () => "書きかけ",
+    getInteractionPolicy: () => interactionPolicy,
+    onDraftInput: () => {},
+    onCommit: (source, command) => calls.push([source, command]),
+    onReopenPrevious: () => {},
+    onSwitchRole: () => {},
+  });
+
+  draftInput.listeners.get("keydown")(keyEvent("Enter"));
+  assert.deepEqual(calls.at(-1), [draftInput, COMMAND_COMMIT]);
+
+  interactionPolicy = DIALOGUE_ENTER_PRESERVE_INTERACTION_POLICY;
+  draftInput.listeners.get("keydown")(keyEvent("Enter"));
+  assert.deepEqual(calls.at(-1), [draftInput, COMMAND_COMMIT_PRESERVE_ROLE]);
 });

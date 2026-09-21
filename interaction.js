@@ -29,6 +29,8 @@ const SUBMIT_SHORTCUT_DIALOGUE_ENTER = "dialogue-enter";
 const SUBMIT_SHORTCUT_SHIFT_ENTER = "shift-enter";
 const SUBMIT_SHORTCUT_MOD_ENTER = "modifier-enter";
 
+const SHIFT_DOUBLE_TAP_INTERVAL_MS = 400;
+
 const ALTERNATING_INTERACTION_POLICY = Object.freeze({
   roleAfterCommit: ROLE_AFTER_COMMIT_ALTERNATE,
   roleAfterDelete: ROLE_AFTER_DELETE_FROM_MESSAGES,
@@ -58,6 +60,12 @@ const DIALOGUE_ENTER_INTERACTION_POLICY = Object.freeze({
   mobileSwitchShortcut: SWITCH_SHORTCUT_TAB,
   desktopSubmitShortcut: SUBMIT_SHORTCUT_DIALOGUE_ENTER,
   mobileSubmitShortcut: SUBMIT_SHORTCUT_DIALOGUE_ENTER,
+  plainEnterCommand: COMMAND_COMMIT,
+});
+
+const DIALOGUE_ENTER_PRESERVE_INTERACTION_POLICY = Object.freeze({
+  ...DIALOGUE_ENTER_INTERACTION_POLICY,
+  plainEnterCommand: COMMAND_COMMIT_PRESERVE_ROLE,
 });
 
 function assertPolicy(policy) {
@@ -133,14 +141,16 @@ function hasNoModifiers(event) {
   return !event.ctrlKey && !event.altKey && !event.shiftKey && !event.metaKey;
 }
 
-function submitCommandForKey(event, shortcut) {
+function submitCommandForKey(event, policy, shortcut) {
   if (event.key !== "Enter") {
     return COMMAND_NONE;
   }
 
   if (shortcut === SUBMIT_SHORTCUT_DIALOGUE_ENTER) {
     if (hasNoModifiers(event)) {
-      return COMMAND_COMMIT;
+      return policy.plainEnterCommand === COMMAND_COMMIT_PRESERVE_ROLE
+        ? COMMAND_COMMIT_PRESERVE_ROLE
+        : COMMAND_COMMIT;
     }
     if (
       event.shiftKey &&
@@ -224,7 +234,7 @@ function desktopCommandForKey(event, draft, policy) {
     return COMMAND_SWITCH_ROLE;
   }
 
-  return submitCommandForKey(event, policy.desktopSubmitShortcut);
+  return submitCommandForKey(event, policy, policy.desktopSubmitShortcut);
 }
 
 function mobileCommandForKey(event, policy) {
@@ -242,7 +252,111 @@ function mobileCommandForKey(event, policy) {
     return COMMAND_SWITCH_ROLE;
   }
 
-  return submitCommandForKey(event, policy.mobileSubmitShortcut);
+  return submitCommandForKey(event, policy, policy.mobileSubmitShortcut);
+}
+
+function createShiftDoubleTapDetector({
+  maximumInterval = SHIFT_DOUBLE_TAP_INTERVAL_MS,
+  now = () => globalThis.performance?.now?.() ?? Date.now(),
+} = {}) {
+  if (!Number.isFinite(maximumInterval) || maximumInterval <= 0) {
+    throw new TypeError("Shiftキーの二度押し間隔が正しくありません。");
+  }
+  if (typeof now !== "function") {
+    throw new TypeError("時刻を取得する関数が正しくありません。");
+  }
+
+  const pressedShiftKeys = new Set();
+  let currentTapIsClean = false;
+  let previousTapAt = null;
+
+  function shiftKeyId(event) {
+    return event.code || event.key;
+  }
+
+  function reset() {
+    pressedShiftKeys.clear();
+    currentTapIsClean = false;
+    previousTapAt = null;
+  }
+
+  function handleKeydown(event) {
+    if (event.key !== "Shift") {
+      if (pressedShiftKeys.size > 0) {
+        currentTapIsClean = false;
+      }
+      previousTapAt = null;
+      return false;
+    }
+
+    if (event.repeat) {
+      return false;
+    }
+
+    const keyId = shiftKeyId(event);
+    if (pressedShiftKeys.has(keyId)) {
+      return false;
+    }
+
+    if (pressedShiftKeys.size === 0) {
+      currentTapIsClean = Boolean(
+        !event.defaultPrevented &&
+          !event.isComposing &&
+          !event.ctrlKey &&
+          !event.altKey &&
+          !event.metaKey,
+      );
+    } else {
+      currentTapIsClean = false;
+    }
+    pressedShiftKeys.add(keyId);
+    return false;
+  }
+
+  function handleKeyup(event) {
+    if (event.key !== "Shift") {
+      return false;
+    }
+
+    const keyId = shiftKeyId(event);
+    if (!pressedShiftKeys.has(keyId)) {
+      previousTapAt = null;
+      return false;
+    }
+
+    if (
+      event.defaultPrevented ||
+      event.isComposing ||
+      event.ctrlKey ||
+      event.altKey ||
+      event.metaKey
+    ) {
+      currentTapIsClean = false;
+    }
+
+    pressedShiftKeys.delete(keyId);
+    if (pressedShiftKeys.size > 0) {
+      return false;
+    }
+    if (!currentTapIsClean) {
+      previousTapAt = null;
+      return false;
+    }
+
+    const timestamp = Number.isFinite(event.timeStamp) ? event.timeStamp : now();
+    const elapsed = previousTapAt === null ? null : timestamp - previousTapAt;
+    currentTapIsClean = false;
+
+    if (elapsed !== null && elapsed >= 0 && elapsed <= maximumInterval) {
+      previousTapAt = null;
+      return true;
+    }
+
+    previousTapAt = timestamp;
+    return false;
+  }
+
+  return Object.freeze({ handleKeydown, handleKeyup, reset });
 }
 
 globalThis.MyPolyphonyInteraction = Object.freeze({
@@ -265,9 +379,12 @@ globalThis.MyPolyphonyInteraction = Object.freeze({
   SUBMIT_SHORTCUT_DIALOGUE_ENTER,
   SUBMIT_SHORTCUT_SHIFT_ENTER,
   SUBMIT_SHORTCUT_MOD_ENTER,
+  SHIFT_DOUBLE_TAP_INTERVAL_MS,
   ALTERNATING_INTERACTION_POLICY,
   MANUAL_SWITCH_INTERACTION_POLICY,
   DIALOGUE_ENTER_INTERACTION_POLICY,
+  DIALOGUE_ENTER_PRESERVE_INTERACTION_POLICY,
+  createShiftDoubleTapDetector,
   roleAfterCommit,
   roleAfterDelete,
   roleAfterImport,

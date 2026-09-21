@@ -20,8 +20,10 @@ const {
   COMMAND_REOPEN_PREVIOUS,
   COMMAND_SWITCH_ROLE,
   DIALOGUE_ENTER_INTERACTION_POLICY,
+  DIALOGUE_ENTER_PRESERVE_INTERACTION_POLICY,
   MANUAL_SWITCH_INTERACTION_POLICY,
   SUBMIT_SHORTCUT_SHIFT_ENTER,
+  createShiftDoubleTapDetector,
   desktopCommandForKey,
   globalCommandForKey,
   mobileCommandForKey,
@@ -232,6 +234,101 @@ test("対話入力方針はEnter系で話者交代と話者継続を使い分け
       DIALOGUE_ENTER_INTERACTION_POLICY,
     ),
     COMMAND_NONE,
+  );
+});
+
+test("Enterで声を続ける方針でも修飾キー付きEnterの役割は維持する", () => {
+  assert.equal(
+    desktopCommandForKey(
+      keyEvent("Enter"),
+      "発言",
+      DIALOGUE_ENTER_PRESERVE_INTERACTION_POLICY,
+    ),
+    COMMAND_COMMIT_PRESERVE_ROLE,
+  );
+  assert.equal(
+    desktopCommandForKey(
+      keyEvent("Enter", { shiftKey: true }),
+      "発言",
+      DIALOGUE_ENTER_PRESERVE_INTERACTION_POLICY,
+    ),
+    COMMAND_COMMIT_PRESERVE_ROLE,
+  );
+  assert.equal(
+    desktopCommandForKey(
+      keyEvent("Enter", { ctrlKey: true }),
+      "発言",
+      DIALOGUE_ENTER_PRESERVE_INTERACTION_POLICY,
+    ),
+    COMMAND_COMMIT,
+  );
+  assert.equal(
+    mobileCommandForKey(
+      keyEvent("Enter"),
+      DIALOGUE_ENTER_PRESERVE_INTERACTION_POLICY,
+    ),
+    COMMAND_COMMIT_PRESERVE_ROLE,
+  );
+});
+
+test("Shiftだけを素早く二度押すとEnterの方針切替を検出する", () => {
+  const detector = createShiftDoubleTapDetector({ maximumInterval: 400 });
+
+  assert.equal(
+    detector.handleKeydown(keyEvent("Shift", { code: "ShiftLeft", timeStamp: 100 })),
+    false,
+  );
+  assert.equal(
+    detector.handleKeyup(keyEvent("Shift", { code: "ShiftLeft", timeStamp: 140 })),
+    false,
+  );
+  assert.equal(
+    detector.handleKeydown(keyEvent("Shift", { code: "ShiftLeft", timeStamp: 260 })),
+    false,
+  );
+  assert.equal(
+    detector.handleKeyup(keyEvent("Shift", { code: "ShiftLeft", timeStamp: 300 })),
+    true,
+  );
+});
+
+test("Shiftを修飾キーとして使った操作と長い間隔は二度押しに数えない", () => {
+  const detector = createShiftDoubleTapDetector({ maximumInterval: 400 });
+
+  detector.handleKeydown(keyEvent("Shift", { code: "ShiftLeft", timeStamp: 100 }));
+  detector.handleKeydown(keyEvent("A", { shiftKey: true, timeStamp: 130 }));
+  assert.equal(
+    detector.handleKeyup(keyEvent("Shift", { code: "ShiftLeft", timeStamp: 160 })),
+    false,
+  );
+
+  detector.handleKeydown(keyEvent("Shift", { code: "ShiftLeft", timeStamp: 700 }));
+  assert.equal(
+    detector.handleKeyup(keyEvent("Shift", { code: "ShiftLeft", timeStamp: 740 })),
+    false,
+  );
+  detector.handleKeydown(keyEvent("Shift", { code: "ShiftLeft", timeStamp: 1200 }));
+  assert.equal(
+    detector.handleKeyup(keyEvent("Shift", { code: "ShiftLeft", timeStamp: 1240 })),
+    false,
+  );
+});
+
+test("Shiftの長押しによるキーリピートは一回のタップとして扱う", () => {
+  const detector = createShiftDoubleTapDetector({ maximumInterval: 400 });
+
+  detector.handleKeydown(keyEvent("Shift", { code: "ShiftLeft", timeStamp: 100 }));
+  detector.handleKeydown(
+    keyEvent("Shift", { code: "ShiftLeft", repeat: true, timeStamp: 160 }),
+  );
+  assert.equal(
+    detector.handleKeyup(keyEvent("Shift", { code: "ShiftLeft", timeStamp: 220 })),
+    false,
+  );
+  detector.handleKeydown(keyEvent("Shift", { code: "ShiftRight", timeStamp: 300 }));
+  assert.equal(
+    detector.handleKeyup(keyEvent("Shift", { code: "ShiftRight", timeStamp: 340 })),
+    true,
   );
 });
 
