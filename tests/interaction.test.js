@@ -15,8 +15,10 @@ const {
 const {
   ALTERNATING_INTERACTION_POLICY,
   COMMAND_COMMIT,
+  COMMAND_COMMIT_PRESERVE_ROLE,
   COMMAND_NONE,
   COMMAND_SWITCH_ROLE,
+  DIALOGUE_ENTER_INTERACTION_POLICY,
   MANUAL_SWITCH_INTERACTION_POLICY,
   SUBMIT_SHORTCUT_SHIFT_ENTER,
   desktopCommandForKey,
@@ -49,6 +51,14 @@ test("発言後の話者は対話モデルではなく操作方針が決める",
   );
   assert.equal(
     roleAfterCommit(ROLE_SELF, MANUAL_SWITCH_INTERACTION_POLICY),
+    ROLE_SELF,
+  );
+  assert.equal(
+    roleAfterCommit(
+      ROLE_SELF,
+      DIALOGUE_ENTER_INTERACTION_POLICY,
+      COMMAND_COMMIT_PRESERVE_ROLE,
+    ),
     ROLE_SELF,
   );
 });
@@ -170,6 +180,104 @@ test("手動切替方針は空の下書きで押されたTabだけを話者交�
       MANUAL_SWITCH_INTERACTION_POLICY,
     ),
     COMMAND_NONE,
+  );
+});
+
+test("対話入力方針はEnter系で話者交代と話者継続を使い分ける", () => {
+  assert.equal(
+    desktopCommandForKey(
+      keyEvent("Enter"),
+      "発言",
+      DIALOGUE_ENTER_INTERACTION_POLICY,
+    ),
+    COMMAND_COMMIT,
+  );
+  assert.equal(
+    desktopCommandForKey(
+      keyEvent("Enter", { ctrlKey: true }),
+      "発言",
+      DIALOGUE_ENTER_INTERACTION_POLICY,
+    ),
+    COMMAND_COMMIT,
+  );
+  assert.equal(
+    desktopCommandForKey(
+      keyEvent("Enter", { metaKey: true }),
+      "発言",
+      DIALOGUE_ENTER_INTERACTION_POLICY,
+    ),
+    COMMAND_COMMIT,
+  );
+  assert.equal(
+    desktopCommandForKey(
+      keyEvent("Enter", { shiftKey: true }),
+      "発言",
+      DIALOGUE_ENTER_INTERACTION_POLICY,
+    ),
+    COMMAND_COMMIT_PRESERVE_ROLE,
+  );
+  assert.equal(
+    desktopCommandForKey(
+      keyEvent("Enter", { ctrlKey: true, shiftKey: true }),
+      "発言",
+      DIALOGUE_ENTER_INTERACTION_POLICY,
+    ),
+    COMMAND_NONE,
+  );
+  assert.equal(
+    desktopCommandForKey(
+      keyEvent("Enter", { isComposing: true }),
+      "発言",
+      DIALOGUE_ENTER_INTERACTION_POLICY,
+    ),
+    COMMAND_NONE,
+  );
+});
+
+test("対話入力方針は下書きの有無にかかわらずTabで話者を切り替える", () => {
+  assert.equal(
+    desktopCommandForKey(
+      keyEvent("Tab"),
+      "書きかけ",
+      DIALOGUE_ENTER_INTERACTION_POLICY,
+    ),
+    COMMAND_SWITCH_ROLE,
+  );
+  assert.equal(
+    desktopCommandForKey(
+      keyEvent("Tab"),
+      "",
+      DIALOGUE_ENTER_INTERACTION_POLICY,
+    ),
+    COMMAND_SWITCH_ROLE,
+  );
+  assert.equal(
+    mobileCommandForKey(
+      keyEvent("Tab"),
+      DIALOGUE_ENTER_INTERACTION_POLICY,
+    ),
+    COMMAND_SWITCH_ROLE,
+  );
+});
+
+test("チャット表示もPC表示と同じEnter系の話者規則を使う", () => {
+  assert.equal(
+    mobileCommandForKey(keyEvent("Enter"), DIALOGUE_ENTER_INTERACTION_POLICY),
+    COMMAND_COMMIT,
+  );
+  assert.equal(
+    mobileCommandForKey(
+      keyEvent("Enter", { ctrlKey: true }),
+      DIALOGUE_ENTER_INTERACTION_POLICY,
+    ),
+    COMMAND_COMMIT,
+  );
+  assert.equal(
+    mobileCommandForKey(
+      keyEvent("Enter", { shiftKey: true }),
+      DIALOGUE_ENTER_INTERACTION_POLICY,
+    ),
+    COMMAND_COMMIT_PRESERVE_ROLE,
   );
 });
 

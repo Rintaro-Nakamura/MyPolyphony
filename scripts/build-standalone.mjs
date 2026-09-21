@@ -3,10 +3,23 @@ import { fileURLToPath } from "node:url";
 import path from "node:path";
 
 const projectRoot = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
-const indexPath = path.join(projectRoot, "index.html");
+const developmentPath = path.join(projectRoot, "dev.html");
+const distributionPath = path.join(projectRoot, "index.html");
 const checkOnly = process.argv.includes("--check");
 
+const scriptFiles = [
+  "model.js",
+  "preferences.js",
+  "storage.js",
+  "view.js",
+  "interaction.js",
+  "editors.js",
+  "viewport.js",
+  "app.js",
+];
+
 const normalizeLineEndings = (source) => source.replace(/\r\n?/g, "\n");
+const escapeRegExp = (source) => source.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
 
 function indentForEmbedding(source, indentation, lineEnding) {
   return normalizeLineEndings(source)
@@ -16,72 +29,94 @@ function indentForEmbedding(source, indentation, lineEnding) {
     .join(lineEnding);
 }
 
-function replaceEmbeddedSource(html, { tagName, id, source, lineEnding }) {
+function embedStylesheet(html, { href, id, source, lineEnding }) {
   const pattern = new RegExp(
-    `(<${tagName}\\s+id=["']${id}["'][^>]*>)[\\s\\S]*?(</${tagName}>)`,
+    `<link\\s+rel=["']stylesheet["']\\s+href=["']${escapeRegExp(href)}["'][^>]*\\/?>`,
     "i",
   );
   const match = html.match(pattern);
 
   if (!match) {
-    throw new Error(`index.html に #${id} の埋め込み先が見つかりません。`);
+    throw new Error(`dev.html に ${href} の読み込み指定が見つかりません。`);
   }
 
   const tagLineStart = html.lastIndexOf(lineEnding, match.index) + lineEnding.length;
   const tagIndentation = html.slice(tagLineStart, match.index);
   const contentIndentation = `${tagIndentation}  `;
   const embedded = indentForEmbedding(source, contentIndentation, lineEnding);
-  return html.replace(
-    pattern,
-    `${match[1]}${lineEnding}${embedded}${lineEnding}${tagIndentation}${match[2]}`,
-  );
+
+  const replacement =
+    `<style id="${id}">${lineEnding}${embedded}${lineEnding}${tagIndentation}</style>`;
+  return html.replace(pattern, () => replacement);
+}
+
+function embedScripts(html, { sources, lineEnding }) {
+  const pattern = /<!-- my-polyphony-scripts:start -->[\s\S]*?<!-- my-polyphony-scripts:end -->/i;
+  const match = html.match(pattern);
+
+  if (!match) {
+    throw new Error("dev.html にJavaScript埋め込み範囲が見つかりません。");
+  }
+
+  const tagLineStart = html.lastIndexOf(lineEnding, match.index) + lineEnding.length;
+  const tagIndentation = html.slice(tagLineStart, match.index);
+  const contentIndentation = `${tagIndentation}  `;
+  const source = sources.map((item) => item.trim()).join("\n\n");
+  const embedded = indentForEmbedding(source, contentIndentation, lineEnding);
+
+  const replacement =
+    `<script id="my-polyphony-app">${lineEnding}${embedded}${lineEnding}${tagIndentation}</script>`;
+  return html.replace(pattern, () => replacement);
 }
 
 async function readProjectFile(relativePath) {
   return readFile(path.join(projectRoot, relativePath), "utf8");
 }
 
-async function buildStandalone() {
-  const [currentHtml, styles, ...scripts] = await Promise.all([
-    readProjectFile("index.html"),
+async function generateDistributionHtml() {
+  const [developmentHtml, structure, decoration, ...scripts] = await Promise.all([
+    readFile(developmentPath, "utf8"),
+    readProjectFile("structure.css"),
     readProjectFile("styles.css"),
-    readProjectFile("model.js"),
-    readProjectFile("preferences.js"),
-    readProjectFile("storage.js"),
-    readProjectFile("view.js"),
-    readProjectFile("interaction.js"),
-    readProjectFile("editors.js"),
-    readProjectFile("viewport.js"),
-    readProjectFile("app.js"),
+    ...scriptFiles.map(readProjectFile),
   ]);
-  const lineEnding = currentHtml.includes("\r\n") ? "\r\n" : "\n";
+  const lineEnding = "\n";
+  const normalizedDevelopmentHtml = normalizeLineEndings(developmentHtml);
 
-  let generatedHtml = replaceEmbeddedSource(currentHtml, {
-    tagName: "style",
+  let generatedHtml = embedStylesheet(normalizedDevelopmentHtml, {
+    href: "./structure.css",
+    id: "my-polyphony-structure",
+    source: structure,
+    lineEnding,
+  });
+  generatedHtml = embedStylesheet(generatedHtml, {
+    href: "./styles.css",
     id: "my-polyphony-styles",
-    source: styles,
+    source: decoration,
     lineEnding,
   });
-  generatedHtml = replaceEmbeddedSource(generatedHtml, {
-    tagName: "script",
-    id: "my-polyphony-app",
-    source: scripts.map((source) => source.trim()).join("\n\n"),
-    lineEnding,
-  });
+  return embedScripts(generatedHtml, { sources: scripts, lineEnding });
+}
+
+async function buildStandalone() {
+  const generatedHtml = await generateDistributionHtml();
+  const currentHtml = await readFile(distributionPath, "utf8").catch(() => "");
 
   if (generatedHtml === currentHtml) {
-    console.log("index.html は編集元と同期しています。");
+    console.log("index.html は開発元と同期しています。");
     return;
   }
 
   if (checkOnly) {
-    console.error("index.html が編集元と同期していません。`npm run build` を実行してください。");
+    console.error(
+      "配布用 index.html が開発元と同期していません。配布時に `npm run build:release` を実行してください。",
+    );
     process.exitCode = 1;
     return;
   }
 
-  await writeFile(indexPath, generatedHtml, "utf8");
-  console.log("styles.css と JavaScript 編集元から index.html を更新しました。");
+  await writeFile(distributionPath, generatedHtml, "utf8");
+  console.log("dev.html、二つのCSS層、JavaScript編集元から配布用 index.html を生成しました。");
 }
 
 await buildStandalone();

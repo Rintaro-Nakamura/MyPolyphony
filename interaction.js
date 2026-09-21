@@ -8,6 +8,7 @@ const {
 
 const COMMAND_NONE = "none";
 const COMMAND_COMMIT = "commit";
+const COMMAND_COMMIT_PRESERVE_ROLE = "commit-preserve-role";
 const COMMAND_SWITCH_ROLE = "switch-role";
 
 const ROLE_AFTER_COMMIT_ALTERNATE = "alternate";
@@ -18,10 +19,12 @@ const ROLE_AFTER_IMPORT_FROM_MESSAGES = "from-messages";
 const ROLE_AFTER_IMPORT_INITIAL = "initial";
 
 const SWITCH_SHORTCUT_CTRL_ALT_M = "ctrl-alt-m";
+const SWITCH_SHORTCUT_TAB = "tab";
 const SWITCH_SHORTCUT_TAB_WHEN_EMPTY = "tab-when-empty";
 const SWITCH_SHORTCUT_NONE = "none";
 
 const SUBMIT_SHORTCUT_ENTER = "enter";
+const SUBMIT_SHORTCUT_DIALOGUE_ENTER = "dialogue-enter";
 const SUBMIT_SHORTCUT_SHIFT_ENTER = "shift-enter";
 const SUBMIT_SHORTCUT_MOD_ENTER = "modifier-enter";
 
@@ -45,16 +48,34 @@ const MANUAL_SWITCH_INTERACTION_POLICY = Object.freeze({
   mobileSubmitShortcut: SUBMIT_SHORTCUT_MOD_ENTER,
 });
 
+const DIALOGUE_ENTER_INTERACTION_POLICY = Object.freeze({
+  roleAfterCommit: ROLE_AFTER_COMMIT_ALTERNATE,
+  roleAfterDelete: ROLE_AFTER_DELETE_FROM_MESSAGES,
+  roleAfterImport: ROLE_AFTER_IMPORT_FROM_MESSAGES,
+  globalSwitchShortcut: SWITCH_SHORTCUT_NONE,
+  desktopSwitchShortcut: SWITCH_SHORTCUT_TAB,
+  mobileSwitchShortcut: SWITCH_SHORTCUT_TAB,
+  desktopSubmitShortcut: SUBMIT_SHORTCUT_DIALOGUE_ENTER,
+  mobileSubmitShortcut: SUBMIT_SHORTCUT_DIALOGUE_ENTER,
+});
+
 function assertPolicy(policy) {
   if (!policy || typeof policy !== "object") {
     throw new TypeError("対話操作の方針が正しくありません。");
   }
 }
 
-function roleAfterCommit(role, policy) {
+function roleAfterCommit(role, policy, command = COMMAND_COMMIT) {
   assertPolicy(policy);
   if (!isRole(role)) {
     throw new TypeError("発言後の話者を決められません。");
+  }
+
+  if (command === COMMAND_COMMIT_PRESERVE_ROLE) {
+    return role;
+  }
+  if (command !== COMMAND_COMMIT) {
+    throw new TypeError("発言確定の命令が正しくありません。");
   }
 
   if (policy.roleAfterCommit === ROLE_AFTER_COMMIT_ALTERNATE) {
@@ -111,22 +132,47 @@ function hasNoModifiers(event) {
   return !event.ctrlKey && !event.altKey && !event.shiftKey && !event.metaKey;
 }
 
-function matchesSubmitShortcut(event, shortcut) {
+function submitCommandForKey(event, shortcut) {
   if (event.key !== "Enter") {
-    return false;
+    return COMMAND_NONE;
   }
 
+  if (shortcut === SUBMIT_SHORTCUT_DIALOGUE_ENTER) {
+    if (hasNoModifiers(event)) {
+      return COMMAND_COMMIT;
+    }
+    if (
+      event.shiftKey &&
+      !event.ctrlKey &&
+      !event.altKey &&
+      !event.metaKey
+    ) {
+      return COMMAND_COMMIT_PRESERVE_ROLE;
+    }
+    if (
+      (event.ctrlKey || event.metaKey) &&
+      !event.altKey &&
+      !event.shiftKey
+    ) {
+      return COMMAND_COMMIT;
+    }
+    return COMMAND_NONE;
+  }
   if (shortcut === SUBMIT_SHORTCUT_ENTER) {
-    return !event.shiftKey;
+    return !event.shiftKey ? COMMAND_COMMIT : COMMAND_NONE;
   }
   if (shortcut === SUBMIT_SHORTCUT_SHIFT_ENTER) {
-    return event.shiftKey && !event.ctrlKey && !event.altKey && !event.metaKey;
+    return event.shiftKey && !event.ctrlKey && !event.altKey && !event.metaKey
+      ? COMMAND_COMMIT
+      : COMMAND_NONE;
   }
   if (shortcut === SUBMIT_SHORTCUT_MOD_ENTER) {
-    return (event.ctrlKey || event.metaKey) && !event.altKey;
+    return (event.ctrlKey || event.metaKey) && !event.altKey
+      ? COMMAND_COMMIT
+      : COMMAND_NONE;
   }
 
-  return false;
+  return COMMAND_NONE;
 }
 
 function globalCommandForKey(event, { policy, editorOpen = false } = {}) {
@@ -159,20 +205,17 @@ function desktopCommandForKey(event, draft, policy) {
   }
 
   if (
-    policy.desktopSwitchShortcut === SWITCH_SHORTCUT_TAB_WHEN_EMPTY &&
+    (policy.desktopSwitchShortcut === SWITCH_SHORTCUT_TAB ||
+      (policy.desktopSwitchShortcut === SWITCH_SHORTCUT_TAB_WHEN_EMPTY &&
+        draft.trim().length === 0)) &&
     event.key === "Tab" &&
     hasNoModifiers(event) &&
-    !event.repeat &&
-    draft.trim().length === 0
+    !event.repeat
   ) {
     return COMMAND_SWITCH_ROLE;
   }
 
-  if (matchesSubmitShortcut(event, policy.desktopSubmitShortcut)) {
-    return COMMAND_COMMIT;
-  }
-
-  return COMMAND_NONE;
+  return submitCommandForKey(event, policy.desktopSubmitShortcut);
 }
 
 function mobileCommandForKey(event, policy) {
@@ -181,14 +224,22 @@ function mobileCommandForKey(event, policy) {
     return COMMAND_NONE;
   }
 
-  return matchesSubmitShortcut(event, policy.mobileSubmitShortcut)
-    ? COMMAND_COMMIT
-    : COMMAND_NONE;
+  if (
+    policy.mobileSwitchShortcut === SWITCH_SHORTCUT_TAB &&
+    event.key === "Tab" &&
+    hasNoModifiers(event) &&
+    !event.repeat
+  ) {
+    return COMMAND_SWITCH_ROLE;
+  }
+
+  return submitCommandForKey(event, policy.mobileSubmitShortcut);
 }
 
 globalThis.MyPolyphonyInteraction = Object.freeze({
   COMMAND_NONE,
   COMMAND_COMMIT,
+  COMMAND_COMMIT_PRESERVE_ROLE,
   COMMAND_SWITCH_ROLE,
   ROLE_AFTER_COMMIT_ALTERNATE,
   ROLE_AFTER_COMMIT_PRESERVE,
@@ -197,13 +248,16 @@ globalThis.MyPolyphonyInteraction = Object.freeze({
   ROLE_AFTER_IMPORT_FROM_MESSAGES,
   ROLE_AFTER_IMPORT_INITIAL,
   SWITCH_SHORTCUT_CTRL_ALT_M,
+  SWITCH_SHORTCUT_TAB,
   SWITCH_SHORTCUT_TAB_WHEN_EMPTY,
   SWITCH_SHORTCUT_NONE,
   SUBMIT_SHORTCUT_ENTER,
+  SUBMIT_SHORTCUT_DIALOGUE_ENTER,
   SUBMIT_SHORTCUT_SHIFT_ENTER,
   SUBMIT_SHORTCUT_MOD_ENTER,
   ALTERNATING_INTERACTION_POLICY,
   MANUAL_SWITCH_INTERACTION_POLICY,
+  DIALOGUE_ENTER_INTERACTION_POLICY,
   roleAfterCommit,
   roleAfterDelete,
   roleAfterImport,

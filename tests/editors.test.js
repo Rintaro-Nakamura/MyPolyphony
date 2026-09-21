@@ -7,6 +7,9 @@ import "../editors.js";
 
 const {
   ALTERNATING_INTERACTION_POLICY,
+  COMMAND_COMMIT,
+  COMMAND_COMMIT_PRESERVE_ROLE,
+  DIALOGUE_ENTER_INTERACTION_POLICY,
   MANUAL_SWITCH_INTERACTION_POLICY,
 } = globalThis.MyPolyphonyInteraction;
 const { bindDesktopEditor, bindMobileEditor } = globalThis.MyPolyphonyEditors;
@@ -100,4 +103,53 @@ test("PC版とスマートフォン版はそれぞれの確定キーを解釈す
   draftInput.listeners.get("keydown")(controlEnter);
   assert.equal(controlEnter.prevented, true);
   assert.equal(commits, 1);
+});
+
+test("対話入力方針の命令を確定処理と話者切替へ渡す", () => {
+  const composer = eventTarget();
+  const draftInput = eventTarget();
+  const roleButton = eventTarget();
+  const calls = [];
+
+  bindDesktopEditor({
+    composer,
+    draftInput,
+    roleButton,
+    getDraft: () => "書きかけ",
+    interactionPolicy: DIALOGUE_ENTER_INTERACTION_POLICY,
+    onDraftInput: () => {},
+    onCommit: (source, command) => calls.push(["commit", source, command]),
+    onSwitchRole: (options) => calls.push(["switch", options]),
+  });
+
+  const plainEnter = keyEvent("Enter");
+  draftInput.listeners.get("keydown")(plainEnter);
+  assert.equal(plainEnter.prevented, true);
+  assert.deepEqual(calls.at(-1), ["commit", draftInput, COMMAND_COMMIT]);
+
+  const shiftEnter = keyEvent("Enter", { shiftKey: true });
+  draftInput.listeners.get("keydown")(shiftEnter);
+  assert.equal(shiftEnter.prevented, true);
+  assert.deepEqual(calls.at(-1), [
+    "commit",
+    draftInput,
+    COMMAND_COMMIT_PRESERVE_ROLE,
+  ]);
+
+  const tab = keyEvent("Tab");
+  draftInput.listeners.get("keydown")(tab);
+  assert.equal(tab.prevented, true);
+  assert.deepEqual(calls.at(-1), [
+    "switch",
+    { source: draftInput, preserveSelection: true },
+  ]);
+
+  roleButton.listeners.get("click")();
+  assert.deepEqual(calls.at(-1), [
+    "switch",
+    { source: draftInput, preserveSelection: false },
+  ]);
+
+  composer.listeners.get("submit")(keyEvent("submit"));
+  assert.deepEqual(calls.at(-1), ["commit", draftInput, COMMAND_COMMIT]);
 });

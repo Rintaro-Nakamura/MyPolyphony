@@ -36,8 +36,9 @@ const {
   roleLabel,
 } = globalThis.MyPolyphonyView;
 const {
-  ALTERNATING_INTERACTION_POLICY,
+  COMMAND_COMMIT,
   COMMAND_SWITCH_ROLE,
+  DIALOGUE_ENTER_INTERACTION_POLICY,
   ROLE_AFTER_COMMIT_ALTERNATE,
   globalCommandForKey,
   roleAfterCommit,
@@ -55,8 +56,8 @@ const {
 const elements = collectElements(document);
 
 // 各表示で採用する操作方針。共有データを変えず、表示ごとに別方針へ交換できる。
-const desktopInteractionPolicy = ALTERNATING_INTERACTION_POLICY;
-const mobileInteractionPolicy = ALTERNATING_INTERACTION_POLICY;
+const desktopInteractionPolicy = DIALOGUE_ENTER_INTERACTION_POLICY;
+const mobileInteractionPolicy = DIALOGUE_ENTER_INTERACTION_POLICY;
 const desktopViewportPolicy = STATIC_DESKTOP_VIEWPORT_POLICY;
 const mobileViewportPolicy = CHAT_MOBILE_VIEWPORT_POLICY;
 
@@ -427,12 +428,14 @@ function renderComposer() {
   syncDraftInputs();
 }
 
-function handleRoleToggle() {
+function handleRoleToggle({ source = null, preserveSelection = false } = {}) {
   const interactionPolicy = interactionPolicyForMode();
   state = toggleNextRole(state);
   persistNow();
   renderComposer();
-  focusComposer();
+  if (!preserveSelection || document.activeElement !== source) {
+    focusComposer();
+  }
   const afterCommitMessage =
     interactionPolicy.roleAfterCommit === ROLE_AFTER_COMMIT_ALTERNATE
       ? "発言後は自動で交替します。"
@@ -487,7 +490,7 @@ function handleDraftInput(event) {
   schedulePersist();
 }
 
-function commitCurrentDraft(source) {
+function commitCurrentDraft(source, command = COMMAND_COMMIT) {
   state = updateDraft(state, source.value);
   if (state.draft.trim().length === 0) {
     source.setCustomValidity("発言を入力してください。");
@@ -499,7 +502,10 @@ function commitCurrentDraft(source) {
   const committedRole = state.nextRole;
   const interactionPolicy = interactionPolicyForSource(source);
   state = commitDraft(state);
-  state = setNextRole(state, roleAfterCommit(committedRole, interactionPolicy));
+  state = setNextRole(
+    state,
+    roleAfterCommit(committedRole, interactionPolicy, command),
+  );
   persistNow();
   renderAll({ focus: true, scroll: true });
   announce(`${roleLabel(committedRole)}の発言を追加しました。次は${roleLabel(state.nextRole)}です。`);
