@@ -151,6 +151,16 @@ test("構造CSSは装飾CSSを外しても必要な変数を自給する", async
   assert.deepEqual(undefinedVariables, []);
 });
 
+test("紙面上の相手の発言は半透明の色越しに紙面を見せる", async () => {
+  const css = await readProjectFile("styles.css");
+
+  assert.match(css, /--voice-paper-overlay:\s*rgba\(236,\s*238,\s*254,\s*0\.45\)/);
+  assert.match(
+    css,
+    /\.desktop-message--other\s*\{[\s\S]*?background:\s*var\(--voice-paper-overlay\)/,
+  );
+});
+
 test("仕様の具体例を開発画面から読み込める", async () => {
   const html = await readProjectFile("dev.html");
   const exampleScript = html.match(

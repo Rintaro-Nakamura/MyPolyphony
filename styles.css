@@ -14,6 +14,7 @@
   --voice: #5c64c7;
   --voice-dark: #3f468f;
   --voice-pale: #eceefe;
+  --voice-paper-overlay: rgba(236, 238, 254, 0.45);
   --self-pale: #fff8e8;
   --success: #337660;
   --danger: #b53d3d;
@@ -392,7 +393,7 @@ textarea {
 }
 
 .desktop-message--other {
-  background: var(--voice-pale);
+  background: var(--voice-paper-overlay);
   box-shadow: inset 4px 0 0 var(--voice);
 }
 
