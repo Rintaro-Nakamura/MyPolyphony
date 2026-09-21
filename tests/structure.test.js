@@ -15,6 +15,7 @@ test("dev.htmlは構造層、装飾層、役割別JavaScriptを開発元とし�
     "./view.js",
     "./interaction.js",
     "./editors.js",
+    "./caret-navigation.js",
     "./viewport.js",
     "./app.js",
   ];
@@ -49,6 +50,7 @@ test("文書表示の主要な操作要素を備えている", async () => {
     html,
     /<button\s+id="mobileRoleLabel"[\s\S]*?type="button"[\s\S]*?>次は自分<\/button>/,
   );
+  assert.doesNotMatch(html, /<button[^>]*>発言を置く<\/button>/);
 });
 
 test("設定に対話篇の入出力と書体選択をまとめている", async () => {
@@ -77,6 +79,7 @@ test("ノートの開始日時、発言領域、スマホ全画面操作を配�
     html,
     /<button\s+id="mobileFullscreenButton"[\s\S]*?aria-label="チャットを全画面で開く"[\s\S]*?aria-pressed="false"/,
   );
+  assert.doesNotMatch(html, /id="editDialog"/);
 });
 
 test("構造CSSは表示、スクロール、画面幅による配置変更を受け持つ", async () => {
@@ -91,6 +94,15 @@ test("構造CSSは表示、スクロール、画面幅による配置変更を�
     /@media \(max-width:\s*767px\)[\s\S]*?\.phone-header__fullscreen\s*\{[\s\S]*?display:\s*grid/,
   );
   assert.match(css, /html\.mobile-immersive \.phone-frame\s*\{[\s\S]*?height:\s*100dvh/);
+  assert.match(
+    css,
+    /\.desktop-message__text:focus\s*\{[\s\S]*?outline:\s*none/,
+  );
+  assert.match(css, /\.desktop-message__text\s*\{[\s\S]*?display:\s*inline/);
+  assert.match(
+    css,
+    /\.desktop-message__text:empty\s*\{[\s\S]*?display:\s*inline-block[\s\S]*?min-width:\s*1ch/,
+  );
 });
 
 test("構造CSSは装飾CSSを外しても必要な変数を自給する", async () => {

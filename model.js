@@ -81,6 +81,12 @@ function assertNonEmptyText(text) {
   }
 }
 
+function assertText(text) {
+  if (typeof text !== "string") {
+    throw new TypeError("発言本文が正しくありません。");
+  }
+}
+
 function assertMessage(message, { requireId = false } = {}) {
   if (!message || typeof message !== "object" || Array.isArray(message)) {
     throw new TypeError("発言データが正しくありません。");
@@ -90,7 +96,7 @@ function assertMessage(message, { requireId = false } = {}) {
     throw new TypeError("発言の話者が正しくありません。");
   }
 
-  assertNonEmptyText(message.text);
+  assertText(message.text);
 
   if (requireId && (typeof message.id !== "string" || message.id.length === 0)) {
     throw new TypeError("発言IDが正しくありません。");
@@ -147,7 +153,7 @@ function setNextRole(state, nextRole) {
 }
 
 function editMessage(state, id, text) {
-  assertNonEmptyText(text);
+  assertText(text);
   let found = false;
 
   const messages = state.messages.map((message) => {
@@ -169,6 +175,130 @@ function editMessage(state, id, text) {
   return {
     ...state,
     messages,
+  };
+}
+
+function setMessageRole(state, id, role) {
+  if (!isRole(role)) {
+    throw new TypeError("発言の話者が正しくありません。");
+  }
+
+  let found = false;
+  const messages = state.messages.map((message) => {
+    if (message.id !== id) {
+      return message;
+    }
+
+    found = true;
+    return {
+      ...message,
+      role,
+    };
+  });
+
+  if (!found) {
+    throw new RangeError("話者を変更する発言が見つかりません。");
+  }
+
+  return {
+    ...state,
+    messages,
+  };
+}
+
+function splitMessage(state, id, start, end, newRole, idFactory = createId) {
+  if (!Number.isInteger(start) || !Number.isInteger(end)) {
+    throw new TypeError("発言を分ける位置が正しくありません。");
+  }
+  if (!isRole(newRole)) {
+    throw new TypeError("新しい発言の話者が正しくありません。");
+  }
+
+  const index = state.messages.findIndex((message) => message.id === id);
+  if (index < 0) {
+    throw new RangeError("分ける発言が見つかりません。");
+  }
+
+  const message = state.messages[index];
+  if (start < 0 || end < start || end > message.text.length) {
+    throw new RangeError("発言を分ける位置が本文の範囲外です。");
+  }
+
+  const messages = [...state.messages];
+  messages.splice(
+    index,
+    1,
+    { ...message, text: message.text.slice(0, start) },
+    {
+      id: idFactory(),
+      role: newRole,
+      text: message.text.slice(end),
+    },
+  );
+
+  return {
+    ...state,
+    messages,
+  };
+}
+
+function mergeMessageBackward(state, id) {
+  const index = state.messages.findIndex((message) => message.id === id);
+  if (index < 0) {
+    throw new RangeError("結合する発言が見つかりません。");
+  }
+  if (index === 0) {
+    return state;
+  }
+
+  const previous = state.messages[index - 1];
+  const current = state.messages[index];
+  const messages = [...state.messages];
+  messages.splice(index - 1, 2, {
+    ...previous,
+    text: previous.text + current.text,
+  });
+
+  return {
+    ...state,
+    messages,
+  };
+}
+
+function mergeMessageForward(state, id) {
+  const index = state.messages.findIndex((message) => message.id === id);
+  if (index < 0) {
+    throw new RangeError("結合する発言が見つかりません。");
+  }
+  if (index === state.messages.length - 1) {
+    return state;
+  }
+
+  const current = state.messages[index];
+  const next = state.messages[index + 1];
+  const messages = [...state.messages];
+  messages.splice(index, 2, {
+    ...current,
+    text: current.text + next.text,
+  });
+
+  return {
+    ...state,
+    messages,
+  };
+}
+
+function pullLastMessageIntoDraft(state) {
+  if (state.messages.length === 0) {
+    return state;
+  }
+
+  const message = state.messages.at(-1);
+  return {
+    ...state,
+    messages: state.messages.slice(0, -1),
+    draft: message.text,
+    nextRole: message.role,
   };
 }
 
@@ -361,6 +491,11 @@ globalThis.MyPolyphonyModel = Object.freeze({
   toggleNextRole,
   setNextRole,
   editMessage,
+  setMessageRole,
+  splitMessage,
+  mergeMessageBackward,
+  mergeMessageForward,
+  pullLastMessageIntoDraft,
   deleteMessage,
   serializeStoredState,
   parseStoredState,

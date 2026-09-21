@@ -4,11 +4,35 @@ import assert from "node:assert/strict";
 import "../view.js";
 
 const {
+  createDesktopMessage,
   formatDialogueStartedAt,
   renderDesktopComposer,
   renderMobileComposer,
   roleLabel,
 } = globalThis.MyPolyphonyView;
+
+function fakeDocument() {
+  const createElement = (tagName) => ({
+    tagName,
+    className: "",
+    dataset: {},
+    attributes: {},
+    children: [],
+    append(...children) {
+      this.children.push(...children);
+    },
+    setAttribute(name, value) {
+      this.attributes[name] = value;
+    },
+  });
+
+  return {
+    createElement,
+    createTextNode(textContent) {
+      return { nodeType: 3, textContent };
+    },
+  };
+}
 
 test("表示層は話者の内部値を画面上の名称へ変換する", () => {
   assert.equal(roleLabel("self"), "自分");
@@ -58,4 +82,21 @@ test("文書表示とチャット表示はそれぞれの話者表示を描画�
   assert.equal(mobileComposer.dataset.role, "self");
   assert.equal(mobileRoleButton.textContent, "次は自分");
   assert.equal(mobileDraft.placeholder, "自分として書く");
+});
+
+test("文書の発言本文そのものを編集可能な要素として描画する", () => {
+  const article = createDesktopMessage(
+    { id: "m1", role: "self", text: "紙面上の言葉" },
+    0,
+    fakeDocument(),
+  );
+  const content = article.children[1];
+  const editor = content.children[1];
+
+  assert.equal(editor.className, "desktop-message__text");
+  assert.equal(editor.dataset.messageId, "m1");
+  assert.equal(editor.contentEditable, "plaintext-only");
+  assert.equal(editor.textContent, "紙面上の言葉");
+  assert.equal(editor.attributes.role, "textbox");
+  assert.equal(article.children.length, 2, "編集・削除ボタンは発言に付けない");
 });

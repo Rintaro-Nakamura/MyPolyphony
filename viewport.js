@@ -21,6 +21,11 @@ const FOLLOW_INPUT_VIEWPORT_POLICY = Object.freeze({
   bottomInset: 32,
 });
 
+const DESKTOP_CARET_VIEWPORT_POLICY = Object.freeze({
+  topInset: 16,
+  bottomInset: 32,
+});
+
 function calculateRevealDelta(targetBottom, viewportBottom, bottomInset = 0) {
   for (const value of [targetBottom, viewportBottom, bottomInset]) {
     if (!Number.isFinite(value)) {
@@ -29,6 +34,62 @@ function calculateRevealDelta(targetBottom, viewportBottom, bottomInset = 0) {
   }
 
   return Math.max(0, targetBottom + bottomInset - viewportBottom);
+}
+
+function calculateCaretRevealDelta({
+  caretTop,
+  caretBottom,
+  viewportTop,
+  viewportBottom,
+  topInset = 0,
+  bottomInset = 0,
+}) {
+  for (const value of [
+    caretTop,
+    caretBottom,
+    viewportTop,
+    viewportBottom,
+    topInset,
+    bottomInset,
+  ]) {
+    if (!Number.isFinite(value)) {
+      throw new TypeError("キャレット追従の計算値が正しくありません。");
+    }
+  }
+
+  const visibleTop = viewportTop + topInset;
+  const visibleBottom = viewportBottom - bottomInset;
+  if (caretTop < visibleTop) {
+    return caretTop - visibleTop;
+  }
+  if (caretBottom > visibleBottom) {
+    return caretBottom - visibleBottom;
+  }
+  return 0;
+}
+
+function revealCaretLine({
+  caretRect,
+  policy = DESKTOP_CARET_VIEWPORT_POLICY,
+  viewportTop = 0,
+  windowObject = globalThis.window,
+}) {
+  if (!caretRect || !policy || !windowObject) {
+    throw new TypeError("キャレットを表示するための画面情報がありません。");
+  }
+
+  const delta = calculateCaretRevealDelta({
+    caretTop: caretRect.top,
+    caretBottom: caretRect.bottom,
+    viewportTop,
+    viewportBottom: windowObject.innerHeight,
+    topInset: policy.topInset ?? 0,
+    bottomInset: policy.bottomInset ?? 0,
+  });
+  if (delta !== 0) {
+    windowObject.scrollBy({ top: delta, behavior: "auto" });
+  }
+  return delta;
 }
 
 function applyAfterCommitScroll({
@@ -87,8 +148,11 @@ globalThis.MyPolyphonyViewport = Object.freeze({
   STATIC_DESKTOP_VIEWPORT_POLICY,
   CHAT_MOBILE_VIEWPORT_POLICY,
   FOLLOW_INPUT_VIEWPORT_POLICY,
+  DESKTOP_CARET_VIEWPORT_POLICY,
   calculateRevealDelta,
+  calculateCaretRevealDelta,
   applyAfterCommitScroll,
   focusDraftInput,
+  revealCaretLine,
 });
 })();

@@ -113,7 +113,7 @@
             <span aria-hidden="true">」</span>
           </div>
 
-          <div id="desktopMessages" class="desktop-messages" aria-live="polite"></div>
+          <div id="desktopMessages" class="desktop-messages"></div>
 
           <form id="desktopComposer" class="desktop-composer" data-role="self">
             <button
@@ -135,7 +135,6 @@
             </div>
             <div class="composer-footer">
               <p id="desktopHint"><kbd>Enter</kbd> / <kbd>Ctrl</kbd>＋<kbd>Enter</kbd> で次の声へ　<kbd>Shift</kbd>＋<kbd>Enter</kbd> で声を続ける　<kbd>Tab</kbd> で話者を切替</p>
-              <button type="submit">発言を置く</button>
             </div>
           </form>
         </article>
@@ -209,25 +208,6 @@
     </main>
 
     <input id="importInput" type="file" accept="application/json,.json" hidden />
-
-    <dialog id="editDialog" class="edit-dialog">
-      <form id="editForm" method="dialog">
-        <header>
-          <div>
-            <p id="editRoleLabel">自分の発言</p>
-            <h2>言葉を整える</h2>
-          </div>
-          <button id="closeEditButton" class="dialog-close" type="button" aria-label="編集を閉じる">×</button>
-        </header>
-        <label for="editText">発言本文</label>
-        <textarea id="editText" rows="7" required></textarea>
-        <p class="dialog-hint"><kbd>Ctrl</kbd>／<kbd>⌘</kbd>＋<kbd>Enter</kbd> でも保存できます</p>
-        <div class="dialog-actions">
-          <button id="cancelEditButton" class="secondary-button" type="button">キャンセル</button>
-          <button class="primary-button" type="submit">変更を保存</button>
-        </div>
-      </form>
-    </dialog>
 
     <div id="toast" class="toast" role="status" aria-live="polite" hidden></div>
     <div id="liveRegion" class="visually-hidden" aria-live="polite"></div>
@@ -303,6 +283,7 @@
     <script src="./view.js"></script>
     <script src="./interaction.js"></script>
     <script src="./editors.js"></script>
+    <script src="./caret-navigation.js"></script>
     <script src="./viewport.js"></script>
     <script src="./app.js"></script>
     <!-- my-polyphony-scripts:end -->

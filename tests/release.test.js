@@ -10,6 +10,7 @@ const scriptFiles = [
   "view.js",
   "interaction.js",
   "editors.js",
+  "caret-navigation.js",
   "viewport.js",
   "app.js",
 ];

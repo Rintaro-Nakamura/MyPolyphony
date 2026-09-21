@@ -4,16 +4,22 @@ const {
   STORAGE_KEY,
   commitDraft,
   createExportBasename,
+  createId,
   createInitialState,
-  deleteMessage,
   editMessage,
+  mergeMessageBackward,
+  mergeMessageForward,
+  oppositeRole,
   parseDialogue,
   parseStoredState,
+  pullLastMessageIntoDraft,
   refreshStartedAtIfEmpty,
   serializeDialogue,
   serializePlainText,
   serializeStoredState,
+  setMessageRole,
   setNextRole,
+  splitMessage,
   toggleNextRole,
   updateDraft,
 } = globalThis.MyPolyphonyModel;
@@ -37,23 +43,40 @@ const {
 } = globalThis.MyPolyphonyView;
 const {
   COMMAND_COMMIT,
+  COMMAND_COMMIT_PRESERVE_ROLE,
   COMMAND_SWITCH_ROLE,
   DIALOGUE_ENTER_INTERACTION_POLICY,
   ROLE_AFTER_COMMIT_ALTERNATE,
+  desktopCommandForKey,
   globalCommandForKey,
   roleAfterCommit,
-  roleAfterDelete,
   roleAfterImport,
 } = globalThis.MyPolyphonyInteraction;
 const { bindDesktopEditor, bindMobileEditor } = globalThis.MyPolyphonyEditors;
+const { createDesktopCaretNavigation } = globalThis.MyPolyphonyCaretNavigation;
 const {
   CHAT_MOBILE_VIEWPORT_POLICY,
+  DESKTOP_CARET_VIEWPORT_POLICY,
   STATIC_DESKTOP_VIEWPORT_POLICY,
   applyAfterCommitScroll,
   focusDraftInput,
+  revealCaretLine,
 } = globalThis.MyPolyphonyViewport;
 
 const elements = collectElements(document);
+const desktopCaretNavigation = createDesktopCaretNavigation({
+  messagesContainer: elements.desktopMessages,
+  draftInput: elements.desktopDraft,
+  onRevealCaret(caretRect) {
+    const headerBottom = document.querySelector(".site-header")
+      ?.getBoundingClientRect().bottom ?? 0;
+    revealCaretLine({
+      caretRect,
+      policy: DESKTOP_CARET_VIEWPORT_POLICY,
+      viewportTop: Math.max(0, headerBottom),
+    });
+  },
+});
 
 // 各表示で採用する操作方針。共有データを変えず、表示ごとに別方針へ交換できる。
 const desktopInteractionPolicy = DIALOGUE_ENTER_INTERACTION_POLICY;
@@ -67,7 +90,6 @@ let state = createInitialState();
 let viewMode = mobileMedia.matches ? "mobile" : "desktop";
 let fontPreference = DEFAULT_FONT_PREFERENCE;
 let hasManualMode = false;
-let editingId = null;
 let saveTimer = null;
 let toastTimer = null;
 let storageWriteBlocked = false;
@@ -446,7 +468,6 @@ function handleRoleToggle({ source = null, preserveSelection = false } = {}) {
 function handleRoleShortcut(event) {
   const command = globalCommandForKey(event, {
     policy: interactionPolicyForMode(),
-    editorOpen: elements.editDialog.open,
   });
   if (command !== COMMAND_SWITCH_ROLE) {
     return;
@@ -485,6 +506,7 @@ function focusComposer() {
 
 // 対話篇の編集操作
 function handleDraftInput(event) {
+  desktopCaretNavigation.reset();
   state = updateDraft(state, event.currentTarget.value);
   syncDraftInputs(event.currentTarget);
   schedulePersist();
@@ -515,81 +537,252 @@ function findMessage(id) {
   return state.messages.find((message) => message.id === id);
 }
 
-function openEditor(id) {
-  const message = findMessage(id);
-  if (!message) {
-    return;
+function inlineEditorFromEvent(event) {
+  return event.target.closest?.(".desktop-message__text") ?? null;
+}
+
+function findInlineEditor(id) {
+  return [...elements.desktopMessages.querySelectorAll(".desktop-message__text")]
+    .find((editor) => editor.dataset.messageId === id) ?? null;
+}
+
+function selectionOffsets(editor) {
+  const selection = window.getSelection();
+  if (!selection || selection.rangeCount === 0) {
+    return null;
   }
 
-  editingId = id;
-  elements.editRoleLabel.textContent = `${roleLabel(message.role)}の発言`;
-  elements.editText.value = message.text;
-  elements.editDialog.showModal();
+  const range = selection.getRangeAt(0);
+  if (
+    !editor.contains(range.startContainer) ||
+    !editor.contains(range.endContainer)
+  ) {
+    return null;
+  }
+
+  const beforeStart = range.cloneRange();
+  beforeStart.selectNodeContents(editor);
+  beforeStart.setEnd(range.startContainer, range.startOffset);
+  const beforeEnd = range.cloneRange();
+  beforeEnd.selectNodeContents(editor);
+  beforeEnd.setEnd(range.endContainer, range.endOffset);
+
+  return {
+    start: beforeStart.toString().length,
+    end: beforeEnd.toString().length,
+  };
+}
+
+function setInlineSelection(editor, start, end = start) {
+  const range = document.createRange();
+  const walker = document.createTreeWalker(editor, NodeFilter.SHOW_TEXT);
+  const points = [];
+  let traversed = 0;
+  let node = walker.nextNode();
+
+  while (node) {
+    const next = traversed + node.data.length;
+    if (points[0] === undefined && start <= next) {
+      points[0] = [node, start - traversed];
+    }
+    if (points[1] === undefined && end <= next) {
+      points[1] = [node, end - traversed];
+      break;
+    }
+    traversed = next;
+    node = walker.nextNode();
+  }
+
+  if (points[0] === undefined) {
+    points[0] = [editor, editor.childNodes.length];
+  }
+  if (points[1] === undefined) {
+    points[1] = [editor, editor.childNodes.length];
+  }
+
+  range.setStart(...points[0]);
+  range.setEnd(...points[1]);
+  const selection = window.getSelection();
+  selection.removeAllRanges();
+  selection.addRange(range);
+}
+
+function focusInlineEditor(id, start, end = start) {
   window.requestAnimationFrame(() => {
-    elements.editText.focus();
-    elements.editText.setSelectionRange(message.text.length, message.text.length);
+    const editor = findInlineEditor(id);
+    if (!editor) {
+      return;
+    }
+
+    editor.focus();
+    setInlineSelection(editor, start, end);
   });
 }
 
-function closeEditor() {
-  editingId = null;
-  elements.editDialog.close();
+function updateMobileMessageText(id, text) {
+  const article = [...elements.mobileMessages.querySelectorAll(".mobile-message")]
+    .find((message) => message.dataset.messageId === id);
+  const content = article?.querySelector(".mobile-message__content");
+  if (content) {
+    content.textContent = text;
+  }
 }
 
-function saveEdit(event) {
-  event.preventDefault();
-  if (!editingId) {
+function handleInlineMessageClick(event) {
+  desktopCaretNavigation.reset();
+  if (inlineEditorFromEvent(event)) {
     return;
   }
 
-  if (elements.editText.value.trim().length === 0) {
-    elements.editText.setCustomValidity("発言を入力してください。");
-    elements.editText.reportValidity();
-    elements.editText.setCustomValidity("");
+  const article = event.target.closest?.(".desktop-message");
+  if (!article) {
     return;
   }
 
-  state = editMessage(state, editingId, elements.editText.value);
-  persistNow();
-  closeEditor();
-  renderAll();
-  showToast("発言を更新しました");
-}
-
-function removeMessage(id) {
-  const message = findMessage(id);
+  const message = findMessage(article.dataset.messageId);
   if (!message) {
     return;
   }
 
-  const excerpt = message.text.replace(/\s+/g, " ").slice(0, 28);
-  if (!window.confirm(`「${excerpt}${message.text.length > 28 ? "…" : ""}」を削除しますか？`)) {
-    return;
-  }
-
-  const currentRole = state.nextRole;
-  const interactionPolicy = interactionPolicyForMode();
-  state = deleteMessage(state, id);
-  state = setNextRole(
-    state,
-    roleAfterDelete(state.messages, currentRole, interactionPolicy),
-  );
-  persistNow();
-  renderAll({ focus: true });
-  announce("発言を削除しました。");
+  focusInlineEditor(message.id, message.text.length);
 }
 
-function handleMessageAction(event) {
-  const button = event.target.closest("button[data-action]");
-  if (!button) {
+function handleInlineMessageInput(event) {
+  const editor = inlineEditorFromEvent(event);
+  if (!editor) {
     return;
   }
 
-  if (button.dataset.action === "edit") {
-    openEditor(button.dataset.id);
-  } else if (button.dataset.action === "delete") {
-    removeMessage(button.dataset.id);
+  desktopCaretNavigation.reset();
+  const selected = selectionOffsets(editor);
+  const rawText = editor.textContent ?? "";
+  const text = rawText.replace(/[\r\n]+/g, "");
+  if (rawText !== text) {
+    const rawOffset = selected?.start ?? text.length;
+    const offset = rawText.slice(0, rawOffset).replace(/[\r\n]+/g, "").length;
+    editor.textContent = text;
+    setInlineSelection(editor, offset);
   }
+
+  state = editMessage(state, editor.dataset.messageId, text);
+  persistNow();
+  updateMobileMessageText(editor.dataset.messageId, text);
+}
+
+function handleInlineMessageKeydown(event) {
+  const editor = inlineEditorFromEvent(event);
+  if (!editor || event.defaultPrevented || event.isComposing || event.keyCode === 229) {
+    return;
+  }
+
+  if (desktopCaretNavigation.handleKeydown(event)) {
+    return;
+  }
+
+  const message = findMessage(editor.dataset.messageId);
+  const selected = selectionOffsets(editor);
+  if (!message || !selected) {
+    return;
+  }
+
+  if (event.key === "Escape") {
+    event.preventDefault();
+    editor.blur();
+    return;
+  }
+
+  const index = state.messages.findIndex(({ id }) => id === message.id);
+  const collapsed = selected.start === selected.end;
+
+  if (event.key === "Backspace" && collapsed && selected.start === 0) {
+    event.preventDefault();
+    if (index === 0) {
+      return;
+    }
+
+    const previous = state.messages[index - 1];
+    const joinOffset = previous.text.length;
+    state = mergeMessageBackward(state, message.id);
+    persistNow();
+    renderMessages();
+    focusInlineEditor(previous.id, joinOffset);
+    return;
+  }
+
+  if (
+    event.key === "Delete" &&
+    collapsed &&
+    selected.end === message.text.length
+  ) {
+    event.preventDefault();
+    if (index === state.messages.length - 1) {
+      return;
+    }
+
+    const joinOffset = message.text.length;
+    state = mergeMessageForward(state, message.id);
+    persistNow();
+    renderMessages();
+    focusInlineEditor(message.id, joinOffset);
+    return;
+  }
+
+  if (event.key !== "Enter" && event.key !== "Tab") {
+    return;
+  }
+
+  const command = desktopCommandForKey(
+    event,
+    message.text,
+    desktopInteractionPolicy,
+  );
+  if (command === COMMAND_SWITCH_ROLE) {
+    event.preventDefault();
+    state = setMessageRole(state, message.id, oppositeRole(message.role));
+    persistNow();
+    renderMessages();
+    focusInlineEditor(message.id, selected.start, selected.end);
+    announce(`${roleLabel(oppositeRole(message.role))}の発言に切り替えました。`);
+    return;
+  }
+  if (command !== COMMAND_COMMIT && command !== COMMAND_COMMIT_PRESERVE_ROLE) {
+    return;
+  }
+
+  event.preventDefault();
+  const newId = createId();
+  const newRole = roleAfterCommit(
+    message.role,
+    desktopInteractionPolicy,
+    command,
+  );
+  state = splitMessage(
+    state,
+    message.id,
+    selected.start,
+    selected.end,
+    newRole,
+    () => newId,
+  );
+  persistNow();
+  renderMessages();
+  focusInlineEditor(newId, 0);
+}
+
+function reopenPreviousMessage(source) {
+  if (state.messages.length === 0 || state.draft.length > 0) {
+    return;
+  }
+
+  state = pullLastMessageIntoDraft(state);
+  persistNow();
+  renderMessages();
+  renderComposer();
+  window.requestAnimationFrame(() => {
+    focusDraftInput(source, desktopViewportPolicy);
+    source.setSelectionRange(state.draft.length, state.draft.length);
+  });
+  announce("直前の発言を入力欄へ戻しました。");
 }
 
 // 読み込みと書き出し
@@ -753,6 +946,12 @@ function bindEvents() {
     }
   });
 
+  elements.desktopDraft.addEventListener(
+    "keydown",
+    desktopCaretNavigation.handleKeydown,
+  );
+  elements.desktopDraft.addEventListener("pointerdown", desktopCaretNavigation.reset);
+
   bindDesktopEditor({
     composer: elements.desktopComposer,
     draftInput: elements.desktopDraft,
@@ -761,6 +960,7 @@ function bindEvents() {
     interactionPolicy: desktopInteractionPolicy,
     onDraftInput: handleDraftInput,
     onCommit: commitCurrentDraft,
+    onReopenPrevious: reopenPreviousMessage,
     onSwitchRole: handleRoleToggle,
   });
 
@@ -775,8 +975,9 @@ function bindEvents() {
   });
   elements.mobileFullscreenButton.addEventListener("click", toggleMobileFullscreen);
 
-  elements.desktopMessages.addEventListener("click", handleMessageAction);
-  elements.mobileMessages.addEventListener("click", handleMessageAction);
+  elements.desktopMessages.addEventListener("click", handleInlineMessageClick);
+  elements.desktopMessages.addEventListener("input", handleInlineMessageInput);
+  elements.desktopMessages.addEventListener("keydown", handleInlineMessageKeydown);
 
   elements.importButton.addEventListener("click", () => elements.importInput.click());
   elements.importInput.addEventListener("change", importJson);
@@ -786,22 +987,6 @@ function bindEvents() {
   elements.resetButton.addEventListener("click", resetDialogue);
   elements.loadExampleButton.addEventListener("click", loadToolSpecificationExample);
   elements.dismissNoticeButton.addEventListener("click", dismissNotice);
-
-  elements.editForm.addEventListener("submit", saveEdit);
-  elements.closeEditButton.addEventListener("click", closeEditor);
-  elements.cancelEditButton.addEventListener("click", closeEditor);
-  elements.editText.addEventListener("keydown", (event) => {
-    if (event.key === "Enter" && (event.ctrlKey || event.metaKey) && !event.isComposing) {
-      event.preventDefault();
-      elements.editForm.requestSubmit();
-    }
-  });
-
-  elements.editDialog.addEventListener("click", (event) => {
-    if (event.target === elements.editDialog) {
-      closeEditor();
-    }
-  });
 
   document.addEventListener("fullscreenchange", handleFullscreenChange);
   document.addEventListener("fullscreenerror", handleFullscreenError);

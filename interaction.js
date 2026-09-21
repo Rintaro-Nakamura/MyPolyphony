@@ -10,6 +10,7 @@ const COMMAND_NONE = "none";
 const COMMAND_COMMIT = "commit";
 const COMMAND_COMMIT_PRESERVE_ROLE = "commit-preserve-role";
 const COMMAND_SWITCH_ROLE = "switch-role";
+const COMMAND_REOPEN_PREVIOUS = "reopen-previous";
 
 const ROLE_AFTER_COMMIT_ALTERNATE = "alternate";
 const ROLE_AFTER_COMMIT_PRESERVE = "preserve";
@@ -205,6 +206,14 @@ function desktopCommandForKey(event, draft, policy) {
   }
 
   if (
+    event.key === "Backspace" &&
+    draft.length === 0 &&
+    hasNoModifiers(event)
+  ) {
+    return COMMAND_REOPEN_PREVIOUS;
+  }
+
+  if (
     (policy.desktopSwitchShortcut === SWITCH_SHORTCUT_TAB ||
       (policy.desktopSwitchShortcut === SWITCH_SHORTCUT_TAB_WHEN_EMPTY &&
         draft.trim().length === 0)) &&
@@ -241,6 +250,7 @@ globalThis.MyPolyphonyInteraction = Object.freeze({
   COMMAND_COMMIT,
   COMMAND_COMMIT_PRESERVE_ROLE,
   COMMAND_SWITCH_ROLE,
+  COMMAND_REOPEN_PREVIOUS,
   ROLE_AFTER_COMMIT_ALTERNATE,
   ROLE_AFTER_COMMIT_PRESERVE,
   ROLE_AFTER_DELETE_FROM_MESSAGES,

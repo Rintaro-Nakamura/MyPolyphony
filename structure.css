@@ -312,10 +312,11 @@ body {
 .desktop-message {
   position: relative;
   display: grid;
-  grid-template-columns: 2.1rem minmax(0, 1fr) auto;
+  grid-template-columns: 2.1rem minmax(0, 1fr);
   align-items: start;
   min-height: var(--desktop-message-min-height);
   padding: var(--desktop-message-padding-block) 0.8rem var(--desktop-message-padding-block) 0;
+  cursor: text;
 }
 
 .desktop-message__number {
@@ -329,15 +330,17 @@ body {
   white-space: pre-wrap;
 }
 
-.message-actions {
-  display: flex;
-  align-items: center;
-  gap: 0.15rem;
-  margin-left: 0.65rem;
+.desktop-message__text {
+  display: inline;
 }
 
-.message-action {
-  padding: 0.35rem 0.48rem;
+.desktop-message__text:empty {
+  display: inline-block;
+  min-width: 1ch;
+}
+
+.desktop-message__text:focus {
+  outline: none;
 }
 
 .desktop-composer {
@@ -608,62 +611,6 @@ html.mobile-immersive .phone-header__fullscreen {
   margin: 0 0 0 auto;
 }
 
-.edit-dialog {
-  width: min(560px, calc(100% - 2rem));
-  max-height: calc(100vh - 2rem);
-  padding: 0;
-}
-
-.edit-dialog form {
-  padding: 1.4rem;
-}
-
-.edit-dialog header {
-  display: flex;
-  align-items: start;
-  justify-content: space-between;
-  margin-bottom: 1.2rem;
-}
-
-.edit-dialog header p,
-.edit-dialog header h2 {
-  margin: 0;
-}
-
-.edit-dialog header h2 {
-  margin-top: 0.2rem;
-}
-
-.dialog-close {
-  display: grid;
-  width: 2.1rem;
-  height: 2.1rem;
-  place-items: center;
-}
-
-.edit-dialog label {
-  display: block;
-  margin-bottom: 0.4rem;
-}
-
-.edit-dialog textarea {
-  width: 100%;
-  min-height: 180px;
-  padding: 0.9rem 1rem;
-  resize: vertical;
-}
-
-.dialog-hint {
-  margin: 0.55rem 0 0;
-}
-
-.dialog-actions {
-  display: flex;
-  justify-content: flex-end;
-  gap: 0.5rem;
-  margin-top: 1.3rem;
-}
-
 .toast {
   position: fixed;
   z-index: 100;
@@ -807,9 +754,6 @@ html.mobile-immersive .phone-header__fullscreen {
   max-width: 4.3rem;
 }
 
-.edit-dialog form {
-  padding: 1.1rem;
-}
 }
 
 @media (prefers-reduced-motion: reduce) {
