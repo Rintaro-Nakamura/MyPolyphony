@@ -57,6 +57,26 @@ function isAtViewportBottom({
   return Math.abs(targetBottom - anchoredBottom) <= tolerance;
 }
 
+function calculateSharedComposerTravel({
+  contentGrowth,
+  availableTravel,
+  composerShare = 0.1,
+}) {
+  for (const value of [contentGrowth, availableTravel, composerShare]) {
+    if (!Number.isFinite(value)) {
+      throw new TypeError("発言と入力欄の移動配分が正しくありません。");
+    }
+  }
+  if (composerShare < 0 || composerShare > 1) {
+    throw new RangeError("入力欄の移動割合は0から1の間で指定してください。");
+  }
+
+  return Math.min(
+    Math.max(0, contentGrowth) * composerShare,
+    Math.max(0, availableTravel),
+  );
+}
+
 function calculateCaretRevealDelta({
   caretTop,
   caretBottom,
@@ -171,6 +191,7 @@ globalThis.MyPolyphonyViewport = Object.freeze({
   FOLLOW_INPUT_VIEWPORT_POLICY,
   DESKTOP_CARET_VIEWPORT_POLICY,
   calculateRevealDelta,
+  calculateSharedComposerTravel,
   isAtViewportBottom,
   calculateCaretRevealDelta,
   applyAfterCommitScroll,
