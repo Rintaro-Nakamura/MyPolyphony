@@ -100,7 +100,7 @@ test("チャット表示は確定後に会話領域の末尾へ移動する", ()
   assert.equal(feed.scrollTop, 840);
 });
 
-test("入力追従方針は入力位置が下端を越えた分だけページを送る", () => {
+test("入力追従方針は入力欄全体が下端を越えた分だけページを送る", () => {
   const calls = [];
   const windowObject = {
     innerHeight: 800,
