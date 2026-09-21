@@ -125,12 +125,19 @@ function rangeRectForOffset(node, offset, host) {
   };
 }
 
-function positionForOffset(node, offset, host, horizontalScroll = 0) {
+function positionForOffset(
+  node,
+  offset,
+  host,
+  horizontalScroll = 0,
+  verticalScroll = 0,
+) {
   const rect = rangeRectForOffset(node, offset, host);
   return {
     offset,
     left: rect.left - horizontalScroll,
-    top: rect.top,
+    top: rect.top - verticalScroll,
+    bottom: rect.top - verticalScroll + rect.height,
     height: rect.height,
   };
 }
@@ -216,12 +223,24 @@ function createTextareaMeasurement(textarea) {
 
   const node = mirror.firstChild;
   const positions = graphemeBoundaries(text).map((offset) =>
-    positionForOffset(node, offset, mirror, textarea.scrollLeft),
+    positionForOffset(
+      node,
+      offset,
+      mirror,
+      textarea.scrollLeft,
+      textarea.scrollTop,
+    ),
   );
   return {
     positions,
     positionAt(offset) {
-      return positionForOffset(node, offset, mirror, textarea.scrollLeft);
+      return positionForOffset(
+        node,
+        offset,
+        mirror,
+        textarea.scrollLeft,
+        textarea.scrollTop,
+      );
     },
     destroy() {
       mirror.remove();
@@ -276,22 +295,29 @@ function editorText(editor, draftInput) {
   return editor === draftInput ? editor.value : editor.textContent ?? "";
 }
 
-function focusAtOffset(editor, offset, draftInput) {
+function focusAtOffset(editor, offset, draftInput, { revealElement = true } = {}) {
   editor.focus({ preventScroll: true });
   if (editor === draftInput) {
     editor.setSelectionRange(offset, offset);
   } else {
     setInlineSelection(editor, offset);
   }
-  editor.scrollIntoView({ block: "nearest", inline: "nearest" });
+  if (revealElement) {
+    editor.scrollIntoView({ block: "nearest", inline: "nearest" });
+  }
 }
 
 function isPlainArrow(event) {
   return !event.ctrlKey && !event.altKey && !event.shiftKey && !event.metaKey;
 }
 
-function createDesktopCaretNavigation({ messagesContainer, draftInput }) {
+function createDesktopCaretNavigation({
+  messagesContainer,
+  draftInput,
+  onRevealCaret = () => {},
+}) {
   let preferredX = null;
+  let revealFrame = null;
 
   function reset() {
     preferredX = null;
@@ -309,6 +335,35 @@ function createDesktopCaretNavigation({ messagesContainer, draftInput }) {
       return draftInput;
     }
     return event.target.closest?.(INLINE_EDITOR_SELECTOR) ?? null;
+  }
+
+  function scheduleCaretReveal() {
+    if (revealFrame !== null) {
+      window.cancelAnimationFrame(revealFrame);
+    }
+    revealFrame = window.requestAnimationFrame(() => {
+      revealFrame = null;
+      const active = document.activeElement;
+      const source = active === draftInput || active?.matches?.(INLINE_EDITOR_SELECTOR)
+        ? active
+        : null;
+      if (!source) {
+        return;
+      }
+
+      const selected = selectionOffsets(source, draftInput);
+      if (!selected || selected.start !== selected.end) {
+        return;
+      }
+      const measurement = source === draftInput
+        ? createTextareaMeasurement(source)
+        : createInlineMeasurement(source);
+      try {
+        onRevealCaret(measurement.positionAt(selected.start));
+      } finally {
+        measurement.destroy();
+      }
+    });
   }
 
   function moveHorizontally(event, source, selection, sequence) {
@@ -382,7 +437,7 @@ function createDesktopCaretNavigation({ messagesContainer, draftInput }) {
         targetEdge,
         preferredX,
       );
-      focusAtOffset(target, targetOffset, draftInput);
+      focusAtOffset(target, targetOffset, draftInput, { revealElement: false });
     } finally {
       targetMeasurement.destroy();
     }
@@ -414,7 +469,9 @@ function createDesktopCaretNavigation({ messagesContainer, draftInput }) {
     if (HORIZONTAL_KEYS.has(event.key)) {
       return moveHorizontally(event, source, selection, sequence);
     }
-    return moveVertically(event, source, selection, sequence);
+    const handled = moveVertically(event, source, selection, sequence);
+    scheduleCaretReveal();
+    return handled;
   }
 
   return Object.freeze({ handleKeydown, reset });

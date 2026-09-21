@@ -56,15 +56,26 @@ const { bindDesktopEditor, bindMobileEditor } = globalThis.MyPolyphonyEditors;
 const { createDesktopCaretNavigation } = globalThis.MyPolyphonyCaretNavigation;
 const {
   CHAT_MOBILE_VIEWPORT_POLICY,
+  DESKTOP_CARET_VIEWPORT_POLICY,
   STATIC_DESKTOP_VIEWPORT_POLICY,
   applyAfterCommitScroll,
   focusDraftInput,
+  revealCaretLine,
 } = globalThis.MyPolyphonyViewport;
 
 const elements = collectElements(document);
 const desktopCaretNavigation = createDesktopCaretNavigation({
   messagesContainer: elements.desktopMessages,
   draftInput: elements.desktopDraft,
+  onRevealCaret(caretRect) {
+    const headerBottom = document.querySelector(".site-header")
+      ?.getBoundingClientRect().bottom ?? 0;
+    revealCaretLine({
+      caretRect,
+      policy: DESKTOP_CARET_VIEWPORT_POLICY,
+      viewportTop: Math.max(0, headerBottom),
+    });
+  },
 });
 
 // 各表示で採用する操作方針。共有データを変えず、表示ごとに別方針へ交換できる。
