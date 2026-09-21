@@ -109,6 +109,31 @@
         margin-right: 0.35rem;
       }
 
+      .mode-option {
+        position: relative;
+        display: inline-flex;
+      }
+
+      .mode-option__tooltip {
+        position: absolute;
+        top: calc(100% + 0.5rem);
+        left: 50%;
+        z-index: 20;
+        width: max-content;
+        padding: 0.38rem 0.58rem;
+        pointer-events: none;
+        visibility: hidden;
+        opacity: 0;
+        transform: translate(-50%, -0.2rem);
+      }
+
+      .mode-option--unavailable:hover .mode-option__tooltip,
+      .mode-option--unavailable:focus-within .mode-option__tooltip {
+        visibility: visible;
+        opacity: 1;
+        transform: translate(-50%, 0);
+      }
+
       .mode-button,
       .tool-button {
         min-height: 38px;
@@ -324,10 +349,11 @@
       .desktop-message {
         position: relative;
         display: grid;
-        grid-template-columns: 2.1rem minmax(0, 1fr) auto;
+        grid-template-columns: 2.1rem minmax(0, 1fr);
         align-items: start;
         min-height: var(--desktop-message-min-height);
         padding: var(--desktop-message-padding-block) 0.8rem var(--desktop-message-padding-block) 0;
+        cursor: text;
       }
 
       .desktop-message__number {
@@ -341,15 +367,17 @@
         white-space: pre-wrap;
       }
 
-      .message-actions {
-        display: flex;
-        align-items: center;
-        gap: 0.15rem;
-        margin-left: 0.65rem;
+      .desktop-message__text {
+        display: inline;
       }
 
-      .message-action {
-        padding: 0.35rem 0.48rem;
+      .desktop-message__text:empty {
+        display: inline-block;
+        min-width: 1ch;
+      }
+
+      .desktop-message__text:focus {
+        outline: none;
       }
 
       .desktop-composer {
@@ -620,62 +648,6 @@
         margin: 0 0 0 auto;
       }
 
-      .edit-dialog {
-        width: min(560px, calc(100% - 2rem));
-        max-height: calc(100vh - 2rem);
-        padding: 0;
-      }
-
-      .edit-dialog form {
-        padding: 1.4rem;
-      }
-
-      .edit-dialog header {
-        display: flex;
-        align-items: start;
-        justify-content: space-between;
-        margin-bottom: 1.2rem;
-      }
-
-      .edit-dialog header p,
-      .edit-dialog header h2 {
-        margin: 0;
-      }
-
-      .edit-dialog header h2 {
-        margin-top: 0.2rem;
-      }
-
-      .dialog-close {
-        display: grid;
-        width: 2.1rem;
-        height: 2.1rem;
-        place-items: center;
-      }
-
-      .edit-dialog label {
-        display: block;
-        margin-bottom: 0.4rem;
-      }
-
-      .edit-dialog textarea {
-        width: 100%;
-        min-height: 180px;
-        padding: 0.9rem 1rem;
-        resize: vertical;
-      }
-
-      .dialog-hint {
-        margin: 0.55rem 0 0;
-      }
-
-      .dialog-actions {
-        display: flex;
-        justify-content: flex-end;
-        gap: 0.5rem;
-        margin-top: 1.3rem;
-      }
-
       .toast {
         position: fixed;
         z-index: 100;
@@ -819,9 +791,6 @@
         max-width: 4.3rem;
       }
 
-      .edit-dialog form {
-        padding: 1.1rem;
-      }
       }
 
       @media (prefers-reduced-motion: reduce) {
@@ -849,6 +818,7 @@
         --voice: #5c64c7;
         --voice-dark: #3f468f;
         --voice-pale: #eceefe;
+        --voice-paper-overlay: rgba(236, 238, 254, 0.45);
         --self-pale: #fff8e8;
         --success: #337660;
         --danger: #b53d3d;
@@ -978,6 +948,17 @@
         border-radius: var(--radius-pill);
       }
 
+      .mode-option__tooltip {
+        color: white;
+        background: var(--ink);
+        border-radius: 0.42rem;
+        box-shadow: 0 5px 16px rgba(31, 37, 51, 0.2);
+        font-size: 0.72rem;
+        font-weight: 700;
+        letter-spacing: 0.03em;
+        transition: opacity var(--motion-fast), transform var(--motion-fast), visibility var(--motion-fast);
+      }
+
       .mode-button,
       .tool-button {
         border: 0;
@@ -1003,6 +984,20 @@
         color: white;
         background: var(--ink);
         box-shadow: 0 2px 8px rgba(31, 37, 51, 0.18);
+      }
+
+      .mode-button[aria-disabled="true"] {
+        color: var(--ink-soft);
+        background: transparent;
+        box-shadow: none;
+        cursor: not-allowed;
+        opacity: 0.58;
+      }
+
+      .mode-button[aria-disabled="true"]:hover,
+      .mode-button[aria-disabled="true"]:active {
+        background: transparent;
+        transform: none;
       }
 
       .tool-button--quiet {
@@ -1227,7 +1222,7 @@
       }
 
       .desktop-message--other {
-        background: var(--voice-pale);
+        background: var(--voice-paper-overlay);
         box-shadow: inset 4px 0 0 var(--voice);
       }
 
@@ -1236,10 +1231,35 @@
       }
 
       .desktop-message__number {
+        position: relative;
         color: #99958b;
         font-size: 0.62rem;
         font-weight: 800;
         text-align: center;
+        transition: color var(--motion-fast);
+      }
+
+      .desktop-message__number::after {
+        position: absolute;
+        top: 1.18rem;
+        left: 50%;
+        width: 0.3rem;
+        height: 0.3rem;
+        border-radius: 50%;
+        background: var(--ink-soft);
+        content: "";
+        opacity: 0;
+        transform: translateX(-50%) scale(0.75);
+        transition: opacity var(--motion-fast), transform var(--motion-fast);
+      }
+
+      .desktop-message:focus-within .desktop-message__number {
+        color: var(--ink);
+      }
+
+      .desktop-message:focus-within .desktop-message__number::after {
+        opacity: 0.72;
+        transform: translateX(-50%) scale(1);
       }
 
       .desktop-message__content {
@@ -1760,9 +1780,19 @@
             <button class="mode-button" type="button" data-mode="desktop" aria-pressed="false">
               文書
             </button>
-            <button class="mode-button" type="button" data-mode="mobile" aria-pressed="false">
-              チャット
-            </button>
+            <span class="mode-option mode-option--unavailable">
+              <button
+                class="mode-button"
+                type="button"
+                data-mode="mobile"
+                aria-pressed="false"
+                aria-disabled="true"
+                aria-describedby="chatComingSoon"
+              >
+                チャット
+              </button>
+              <span id="chatComingSoon" class="mode-option__tooltip" role="tooltip">近日公開予定</span>
+            </span>
           </div>
 
           <details id="settingsMenu" class="settings-menu">
@@ -1829,7 +1859,7 @@
             <span aria-hidden="true">」</span>
           </div>
 
-          <div id="desktopMessages" class="desktop-messages" aria-live="polite"></div>
+          <div id="desktopMessages" class="desktop-messages"></div>
 
           <form id="desktopComposer" class="desktop-composer" data-role="self">
             <button
@@ -1850,8 +1880,11 @@
               <span class="quote-input__mark quote-input__mark--close" aria-hidden="true">」</span>
             </div>
             <div class="composer-footer">
-              <p id="desktopHint"><kbd>Enter</kbd> で次の声へ　<kbd>Shift</kbd>＋<kbd>Enter</kbd> で改行</p>
-              <button type="submit">発言を置く</button>
+              <p id="desktopHint">
+                <span id="desktopHintAlternate"><kbd>Enter</kbd> / <kbd>Ctrl</kbd>＋<kbd>Enter</kbd> で次の声へ　<kbd>Shift</kbd>＋<kbd>Enter</kbd> で声を続ける</span>
+                <span id="desktopHintPreserve" hidden><kbd>Enter</kbd> / <kbd>Shift</kbd>＋<kbd>Enter</kbd> で声を続ける　<kbd>Ctrl</kbd>＋<kbd>Enter</kbd> で次の声へ</span>
+                　<kbd>Shift</kbd>を2回押して<kbd>Enter</kbd>の働きを切替　<kbd>Tab</kbd>で話者を切替
+              </p>
             </div>
           </form>
         </article>
@@ -1925,25 +1958,6 @@
     </main>
 
     <input id="importInput" type="file" accept="application/json,.json" hidden />
-
-    <dialog id="editDialog" class="edit-dialog">
-      <form id="editForm" method="dialog">
-        <header>
-          <div>
-            <p id="editRoleLabel">自分の発言</p>
-            <h2>言葉を整える</h2>
-          </div>
-          <button id="closeEditButton" class="dialog-close" type="button" aria-label="編集を閉じる">×</button>
-        </header>
-        <label for="editText">発言本文</label>
-        <textarea id="editText" rows="7" required></textarea>
-        <p class="dialog-hint"><kbd>Ctrl</kbd>／<kbd>⌘</kbd>＋<kbd>Enter</kbd> でも保存できます</p>
-        <div class="dialog-actions">
-          <button id="cancelEditButton" class="secondary-button" type="button">キャンセル</button>
-          <button class="primary-button" type="submit">変更を保存</button>
-        </div>
-      </form>
-    </dialog>
 
     <div id="toast" class="toast" role="status" aria-live="polite" hidden></div>
     <div id="liveRegion" class="visually-hidden" aria-live="polite"></div>
@@ -2096,6 +2110,12 @@
         }
       }
 
+      function assertText(text) {
+        if (typeof text !== "string") {
+          throw new TypeError("発言本文が正しくありません。");
+        }
+      }
+
       function assertMessage(message, { requireId = false } = {}) {
         if (!message || typeof message !== "object" || Array.isArray(message)) {
           throw new TypeError("発言データが正しくありません。");
@@ -2105,7 +2125,7 @@
           throw new TypeError("発言の話者が正しくありません。");
         }
 
-        assertNonEmptyText(message.text);
+        assertText(message.text);
 
         if (requireId && (typeof message.id !== "string" || message.id.length === 0)) {
           throw new TypeError("発言IDが正しくありません。");
@@ -2162,7 +2182,7 @@
       }
 
       function editMessage(state, id, text) {
-        assertNonEmptyText(text);
+        assertText(text);
         let found = false;
 
         const messages = state.messages.map((message) => {
@@ -2184,6 +2204,130 @@
         return {
           ...state,
           messages,
+        };
+      }
+
+      function setMessageRole(state, id, role) {
+        if (!isRole(role)) {
+          throw new TypeError("発言の話者が正しくありません。");
+        }
+
+        let found = false;
+        const messages = state.messages.map((message) => {
+          if (message.id !== id) {
+            return message;
+          }
+
+          found = true;
+          return {
+            ...message,
+            role,
+          };
+        });
+
+        if (!found) {
+          throw new RangeError("話者を変更する発言が見つかりません。");
+        }
+
+        return {
+          ...state,
+          messages,
+        };
+      }
+
+      function splitMessage(state, id, start, end, newRole, idFactory = createId) {
+        if (!Number.isInteger(start) || !Number.isInteger(end)) {
+          throw new TypeError("発言を分ける位置が正しくありません。");
+        }
+        if (!isRole(newRole)) {
+          throw new TypeError("新しい発言の話者が正しくありません。");
+        }
+
+        const index = state.messages.findIndex((message) => message.id === id);
+        if (index < 0) {
+          throw new RangeError("分ける発言が見つかりません。");
+        }
+
+        const message = state.messages[index];
+        if (start < 0 || end < start || end > message.text.length) {
+          throw new RangeError("発言を分ける位置が本文の範囲外です。");
+        }
+
+        const messages = [...state.messages];
+        messages.splice(
+          index,
+          1,
+          { ...message, text: message.text.slice(0, start) },
+          {
+            id: idFactory(),
+            role: newRole,
+            text: message.text.slice(end),
+          },
+        );
+
+        return {
+          ...state,
+          messages,
+        };
+      }
+
+      function mergeMessageBackward(state, id) {
+        const index = state.messages.findIndex((message) => message.id === id);
+        if (index < 0) {
+          throw new RangeError("結合する発言が見つかりません。");
+        }
+        if (index === 0) {
+          return state;
+        }
+
+        const previous = state.messages[index - 1];
+        const current = state.messages[index];
+        const messages = [...state.messages];
+        messages.splice(index - 1, 2, {
+          ...previous,
+          text: previous.text + current.text,
+        });
+
+        return {
+          ...state,
+          messages,
+        };
+      }
+
+      function mergeMessageForward(state, id) {
+        const index = state.messages.findIndex((message) => message.id === id);
+        if (index < 0) {
+          throw new RangeError("結合する発言が見つかりません。");
+        }
+        if (index === state.messages.length - 1) {
+          return state;
+        }
+
+        const current = state.messages[index];
+        const next = state.messages[index + 1];
+        const messages = [...state.messages];
+        messages.splice(index, 2, {
+          ...current,
+          text: current.text + next.text,
+        });
+
+        return {
+          ...state,
+          messages,
+        };
+      }
+
+      function pullLastMessageIntoDraft(state) {
+        if (state.messages.length === 0) {
+          return state;
+        }
+
+        const message = state.messages.at(-1);
+        return {
+          ...state,
+          messages: state.messages.slice(0, -1),
+          draft: message.text,
+          nextRole: message.role,
         };
       }
 
@@ -2376,6 +2520,11 @@
         toggleNextRole,
         setNextRole,
         editMessage,
+        setMessageRole,
+        splitMessage,
+        mergeMessageBackward,
+        mergeMessageForward,
+        pullLastMessageIntoDraft,
         deleteMessage,
         serializeStoredState,
         parseStoredState,
@@ -2396,10 +2545,21 @@
         "noto-sans": "Noto Sans JP 優先",
       });
 
+      const ENTER_BEHAVIOR_STORAGE_KEY = "my-polyphony:v1:enter-behavior";
+      const ENTER_BEHAVIOR_ALTERNATE = "alternate";
+      const ENTER_BEHAVIOR_PRESERVE = "preserve";
+      const DEFAULT_ENTER_BEHAVIOR = ENTER_BEHAVIOR_ALTERNATE;
+
       const VIEW_MODES = Object.freeze(["desktop", "mobile"]);
 
       function normalizeFontPreference(value) {
         return Object.hasOwn(FONT_PREFERENCE_LABELS, value) ? value : DEFAULT_FONT_PREFERENCE;
+      }
+
+      function normalizeEnterBehavior(value) {
+        return value === ENTER_BEHAVIOR_PRESERVE
+          ? ENTER_BEHAVIOR_PRESERVE
+          : DEFAULT_ENTER_BEHAVIOR;
       }
 
       function isViewMode(value) {
@@ -2407,11 +2567,16 @@
       }
 
       globalThis.MyPolyphonyPreferences = Object.freeze({
+        DEFAULT_ENTER_BEHAVIOR,
         DEFAULT_FONT_PREFERENCE,
+        ENTER_BEHAVIOR_ALTERNATE,
+        ENTER_BEHAVIOR_PRESERVE,
+        ENTER_BEHAVIOR_STORAGE_KEY,
         FONT_PREFERENCE_LABELS,
         FONT_STORAGE_KEY,
         VIEW_MODES,
         isViewMode,
+        normalizeEnterBehavior,
         normalizeFontPreference,
       });
       })();
@@ -2468,6 +2633,8 @@
           desktopEmpty: root.querySelector("#desktopEmpty"),
           desktopComposer: root.querySelector("#desktopComposer"),
           desktopDraft: root.querySelector("#desktopDraft"),
+          desktopHintAlternate: root.querySelector("#desktopHintAlternate"),
+          desktopHintPreserve: root.querySelector("#desktopHintPreserve"),
           desktopRoleLabel: root.querySelector("#desktopRoleLabel"),
           dialogueStartedAt: root.querySelector("#dialogueStartedAt"),
           mobileView: root.querySelector("#mobileView"),
@@ -2478,12 +2645,6 @@
           mobileDraft: root.querySelector("#mobileDraft"),
           mobileFullscreenButton: root.querySelector("#mobileFullscreenButton"),
           mobileRoleLabel: root.querySelector("#mobileRoleLabel"),
-          editDialog: root.querySelector("#editDialog"),
-          editForm: root.querySelector("#editForm"),
-          editText: root.querySelector("#editText"),
-          editRoleLabel: root.querySelector("#editRoleLabel"),
-          closeEditButton: root.querySelector("#closeEditButton"),
-          cancelEditButton: root.querySelector("#cancelEditButton"),
           toast: root.querySelector("#toast"),
           liveRegion: root.querySelector("#liveRegion"),
         };
@@ -2529,26 +2690,6 @@
         textarea.style.height = `${Math.min(textarea.scrollHeight, maximum)}px`;
       }
 
-      function makeActionButton(label, action, id, root) {
-        const button = root.createElement("button");
-        button.type = "button";
-        button.className = `message-action message-action--${action}`;
-        button.dataset.action = action;
-        button.dataset.id = id;
-        button.textContent = label;
-        return button;
-      }
-
-      function createMessageActions(message, root, className = "message-actions") {
-        const actions = root.createElement("div");
-        actions.className = className;
-        actions.append(
-          makeActionButton("編集", "edit", message.id, root),
-          makeActionButton("削除", "delete", message.id, root),
-        );
-        return actions;
-      }
-
       function createDesktopMessage(message, index, root = globalThis.document) {
         const article = root.createElement("article");
         article.className = `desktop-message desktop-message--${message.role}`;
@@ -2564,10 +2705,18 @@
         content.className = "desktop-message__content";
         content.append(root.createTextNode("「"));
         const text = root.createElement("span");
+        text.className = "desktop-message__text";
+        text.dataset.messageId = message.id;
+        text.contentEditable = "plaintext-only";
+        text.spellcheck = true;
+        text.setAttribute("role", "textbox");
+        text.setAttribute("aria-multiline", "false");
+        text.setAttribute("aria-label", `${roleLabel(message.role)}の発言本文`);
+        text.setAttribute("aria-describedby", "desktopHint");
         text.textContent = message.text;
         content.append(text, root.createTextNode("」"));
 
-        article.append(number, content, createMessageActions(message, root));
+        article.append(number, content);
         return article;
       }
 
@@ -2585,13 +2734,10 @@
         speaker.textContent = `${roleLabel(message.role)}：`;
 
         const content = root.createElement("p");
+        content.className = "mobile-message__content";
         content.textContent = message.text;
 
-        bubble.append(
-          speaker,
-          content,
-          createMessageActions(message, root, "message-actions mobile-message__actions"),
-        );
+        bubble.append(speaker, content);
         article.append(bubble);
         return article;
       }
@@ -2618,7 +2764,9 @@
 
       const COMMAND_NONE = "none";
       const COMMAND_COMMIT = "commit";
+      const COMMAND_COMMIT_PRESERVE_ROLE = "commit-preserve-role";
       const COMMAND_SWITCH_ROLE = "switch-role";
+      const COMMAND_REOPEN_PREVIOUS = "reopen-previous";
 
       const ROLE_AFTER_COMMIT_ALTERNATE = "alternate";
       const ROLE_AFTER_COMMIT_PRESERVE = "preserve";
@@ -2628,12 +2776,16 @@
       const ROLE_AFTER_IMPORT_INITIAL = "initial";
 
       const SWITCH_SHORTCUT_CTRL_ALT_M = "ctrl-alt-m";
+      const SWITCH_SHORTCUT_TAB = "tab";
       const SWITCH_SHORTCUT_TAB_WHEN_EMPTY = "tab-when-empty";
       const SWITCH_SHORTCUT_NONE = "none";
 
       const SUBMIT_SHORTCUT_ENTER = "enter";
+      const SUBMIT_SHORTCUT_DIALOGUE_ENTER = "dialogue-enter";
       const SUBMIT_SHORTCUT_SHIFT_ENTER = "shift-enter";
       const SUBMIT_SHORTCUT_MOD_ENTER = "modifier-enter";
+
+      const SHIFT_DOUBLE_TAP_INTERVAL_MS = 400;
 
       const ALTERNATING_INTERACTION_POLICY = Object.freeze({
         roleAfterCommit: ROLE_AFTER_COMMIT_ALTERNATE,
@@ -2655,16 +2807,40 @@
         mobileSubmitShortcut: SUBMIT_SHORTCUT_MOD_ENTER,
       });
 
+      const DIALOGUE_ENTER_INTERACTION_POLICY = Object.freeze({
+        roleAfterCommit: ROLE_AFTER_COMMIT_ALTERNATE,
+        roleAfterDelete: ROLE_AFTER_DELETE_FROM_MESSAGES,
+        roleAfterImport: ROLE_AFTER_IMPORT_FROM_MESSAGES,
+        globalSwitchShortcut: SWITCH_SHORTCUT_NONE,
+        desktopSwitchShortcut: SWITCH_SHORTCUT_TAB,
+        mobileSwitchShortcut: SWITCH_SHORTCUT_TAB,
+        desktopSubmitShortcut: SUBMIT_SHORTCUT_DIALOGUE_ENTER,
+        mobileSubmitShortcut: SUBMIT_SHORTCUT_DIALOGUE_ENTER,
+        plainEnterCommand: COMMAND_COMMIT,
+      });
+
+      const DIALOGUE_ENTER_PRESERVE_INTERACTION_POLICY = Object.freeze({
+        ...DIALOGUE_ENTER_INTERACTION_POLICY,
+        plainEnterCommand: COMMAND_COMMIT_PRESERVE_ROLE,
+      });
+
       function assertPolicy(policy) {
         if (!policy || typeof policy !== "object") {
           throw new TypeError("対話操作の方針が正しくありません。");
         }
       }
 
-      function roleAfterCommit(role, policy) {
+      function roleAfterCommit(role, policy, command = COMMAND_COMMIT) {
         assertPolicy(policy);
         if (!isRole(role)) {
           throw new TypeError("発言後の話者を決められません。");
+        }
+
+        if (command === COMMAND_COMMIT_PRESERVE_ROLE) {
+          return role;
+        }
+        if (command !== COMMAND_COMMIT) {
+          throw new TypeError("発言確定の命令が正しくありません。");
         }
 
         if (policy.roleAfterCommit === ROLE_AFTER_COMMIT_ALTERNATE) {
@@ -2721,22 +2897,49 @@
         return !event.ctrlKey && !event.altKey && !event.shiftKey && !event.metaKey;
       }
 
-      function matchesSubmitShortcut(event, shortcut) {
+      function submitCommandForKey(event, policy, shortcut) {
         if (event.key !== "Enter") {
-          return false;
+          return COMMAND_NONE;
         }
 
+        if (shortcut === SUBMIT_SHORTCUT_DIALOGUE_ENTER) {
+          if (hasNoModifiers(event)) {
+            return policy.plainEnterCommand === COMMAND_COMMIT_PRESERVE_ROLE
+              ? COMMAND_COMMIT_PRESERVE_ROLE
+              : COMMAND_COMMIT;
+          }
+          if (
+            event.shiftKey &&
+            !event.ctrlKey &&
+            !event.altKey &&
+            !event.metaKey
+          ) {
+            return COMMAND_COMMIT_PRESERVE_ROLE;
+          }
+          if (
+            (event.ctrlKey || event.metaKey) &&
+            !event.altKey &&
+            !event.shiftKey
+          ) {
+            return COMMAND_COMMIT;
+          }
+          return COMMAND_NONE;
+        }
         if (shortcut === SUBMIT_SHORTCUT_ENTER) {
-          return !event.shiftKey;
+          return !event.shiftKey ? COMMAND_COMMIT : COMMAND_NONE;
         }
         if (shortcut === SUBMIT_SHORTCUT_SHIFT_ENTER) {
-          return event.shiftKey && !event.ctrlKey && !event.altKey && !event.metaKey;
+          return event.shiftKey && !event.ctrlKey && !event.altKey && !event.metaKey
+            ? COMMAND_COMMIT
+            : COMMAND_NONE;
         }
         if (shortcut === SUBMIT_SHORTCUT_MOD_ENTER) {
-          return (event.ctrlKey || event.metaKey) && !event.altKey;
+          return (event.ctrlKey || event.metaKey) && !event.altKey
+            ? COMMAND_COMMIT
+            : COMMAND_NONE;
         }
 
-        return false;
+        return COMMAND_NONE;
       }
 
       function globalCommandForKey(event, { policy, editorOpen = false } = {}) {
@@ -2769,20 +2972,25 @@
         }
 
         if (
-          policy.desktopSwitchShortcut === SWITCH_SHORTCUT_TAB_WHEN_EMPTY &&
+          event.key === "Backspace" &&
+          draft.length === 0 &&
+          hasNoModifiers(event)
+        ) {
+          return COMMAND_REOPEN_PREVIOUS;
+        }
+
+        if (
+          (policy.desktopSwitchShortcut === SWITCH_SHORTCUT_TAB ||
+            (policy.desktopSwitchShortcut === SWITCH_SHORTCUT_TAB_WHEN_EMPTY &&
+              draft.trim().length === 0)) &&
           event.key === "Tab" &&
           hasNoModifiers(event) &&
-          !event.repeat &&
-          draft.trim().length === 0
+          !event.repeat
         ) {
           return COMMAND_SWITCH_ROLE;
         }
 
-        if (matchesSubmitShortcut(event, policy.desktopSubmitShortcut)) {
-          return COMMAND_COMMIT;
-        }
-
-        return COMMAND_NONE;
+        return submitCommandForKey(event, policy, policy.desktopSubmitShortcut);
       }
 
       function mobileCommandForKey(event, policy) {
@@ -2791,15 +2999,128 @@
           return COMMAND_NONE;
         }
 
-        return matchesSubmitShortcut(event, policy.mobileSubmitShortcut)
-          ? COMMAND_COMMIT
-          : COMMAND_NONE;
+        if (
+          policy.mobileSwitchShortcut === SWITCH_SHORTCUT_TAB &&
+          event.key === "Tab" &&
+          hasNoModifiers(event) &&
+          !event.repeat
+        ) {
+          return COMMAND_SWITCH_ROLE;
+        }
+
+        return submitCommandForKey(event, policy, policy.mobileSubmitShortcut);
+      }
+
+      function createShiftDoubleTapDetector({
+        maximumInterval = SHIFT_DOUBLE_TAP_INTERVAL_MS,
+        now = () => globalThis.performance?.now?.() ?? Date.now(),
+      } = {}) {
+        if (!Number.isFinite(maximumInterval) || maximumInterval <= 0) {
+          throw new TypeError("Shiftキーの二度押し間隔が正しくありません。");
+        }
+        if (typeof now !== "function") {
+          throw new TypeError("時刻を取得する関数が正しくありません。");
+        }
+
+        const pressedShiftKeys = new Set();
+        let currentTapIsClean = false;
+        let previousTapAt = null;
+
+        function shiftKeyId(event) {
+          return event.code || event.key;
+        }
+
+        function reset() {
+          pressedShiftKeys.clear();
+          currentTapIsClean = false;
+          previousTapAt = null;
+        }
+
+        function handleKeydown(event) {
+          if (event.key !== "Shift") {
+            if (pressedShiftKeys.size > 0) {
+              currentTapIsClean = false;
+            }
+            previousTapAt = null;
+            return false;
+          }
+
+          if (event.repeat) {
+            return false;
+          }
+
+          const keyId = shiftKeyId(event);
+          if (pressedShiftKeys.has(keyId)) {
+            return false;
+          }
+
+          if (pressedShiftKeys.size === 0) {
+            currentTapIsClean = Boolean(
+              !event.defaultPrevented &&
+                !event.isComposing &&
+                !event.ctrlKey &&
+                !event.altKey &&
+                !event.metaKey,
+            );
+          } else {
+            currentTapIsClean = false;
+          }
+          pressedShiftKeys.add(keyId);
+          return false;
+        }
+
+        function handleKeyup(event) {
+          if (event.key !== "Shift") {
+            return false;
+          }
+
+          const keyId = shiftKeyId(event);
+          if (!pressedShiftKeys.has(keyId)) {
+            previousTapAt = null;
+            return false;
+          }
+
+          if (
+            event.defaultPrevented ||
+            event.isComposing ||
+            event.ctrlKey ||
+            event.altKey ||
+            event.metaKey
+          ) {
+            currentTapIsClean = false;
+          }
+
+          pressedShiftKeys.delete(keyId);
+          if (pressedShiftKeys.size > 0) {
+            return false;
+          }
+          if (!currentTapIsClean) {
+            previousTapAt = null;
+            return false;
+          }
+
+          const timestamp = Number.isFinite(event.timeStamp) ? event.timeStamp : now();
+          const elapsed = previousTapAt === null ? null : timestamp - previousTapAt;
+          currentTapIsClean = false;
+
+          if (elapsed !== null && elapsed >= 0 && elapsed <= maximumInterval) {
+            previousTapAt = null;
+            return true;
+          }
+
+          previousTapAt = timestamp;
+          return false;
+        }
+
+        return Object.freeze({ handleKeydown, handleKeyup, reset });
       }
 
       globalThis.MyPolyphonyInteraction = Object.freeze({
         COMMAND_NONE,
         COMMAND_COMMIT,
+        COMMAND_COMMIT_PRESERVE_ROLE,
         COMMAND_SWITCH_ROLE,
+        COMMAND_REOPEN_PREVIOUS,
         ROLE_AFTER_COMMIT_ALTERNATE,
         ROLE_AFTER_COMMIT_PRESERVE,
         ROLE_AFTER_DELETE_FROM_MESSAGES,
@@ -2807,13 +3128,19 @@
         ROLE_AFTER_IMPORT_FROM_MESSAGES,
         ROLE_AFTER_IMPORT_INITIAL,
         SWITCH_SHORTCUT_CTRL_ALT_M,
+        SWITCH_SHORTCUT_TAB,
         SWITCH_SHORTCUT_TAB_WHEN_EMPTY,
         SWITCH_SHORTCUT_NONE,
         SUBMIT_SHORTCUT_ENTER,
+        SUBMIT_SHORTCUT_DIALOGUE_ENTER,
         SUBMIT_SHORTCUT_SHIFT_ENTER,
         SUBMIT_SHORTCUT_MOD_ENTER,
+        SHIFT_DOUBLE_TAP_INTERVAL_MS,
         ALTERNATING_INTERACTION_POLICY,
         MANUAL_SWITCH_INTERACTION_POLICY,
+        DIALOGUE_ENTER_INTERACTION_POLICY,
+        DIALOGUE_ENTER_PRESERVE_INTERACTION_POLICY,
+        createShiftDoubleTapDetector,
         roleAfterCommit,
         roleAfterDelete,
         roleAfterImport,
@@ -2826,24 +3153,34 @@
       (() => {
       const {
         COMMAND_COMMIT,
+        COMMAND_COMMIT_PRESERVE_ROLE,
         COMMAND_NONE,
+        COMMAND_REOPEN_PREVIOUS,
         COMMAND_SWITCH_ROLE,
         desktopCommandForKey,
         mobileCommandForKey,
       } = globalThis.MyPolyphonyInteraction;
 
-      function executeEditorCommand(command, event, { source, onCommit, onSwitchRole }) {
+      function executeEditorCommand(
+        command,
+        event,
+        { source, onCommit, onReopenPrevious, onSwitchRole },
+      ) {
         if (command === COMMAND_NONE) {
           return false;
         }
 
         event.preventDefault();
-        if (command === COMMAND_COMMIT) {
-          onCommit(source);
+        if (command === COMMAND_COMMIT || command === COMMAND_COMMIT_PRESERVE_ROLE) {
+          onCommit(source, command);
           return true;
         }
         if (command === COMMAND_SWITCH_ROLE) {
-          onSwitchRole();
+          onSwitchRole({ source, preserveSelection: true });
+          return true;
+        }
+        if (command === COMMAND_REOPEN_PREVIOUS) {
+          onReopenPrevious(source);
           return true;
         }
 
@@ -2856,26 +3193,32 @@
         roleButton,
         getDraft,
         interactionPolicy,
+        getInteractionPolicy,
         onDraftInput,
         onCommit,
+        onReopenPrevious,
         onSwitchRole,
       }) {
         const handleKeydown = (event) => {
-          const command = desktopCommandForKey(event, getDraft(), interactionPolicy);
+          const policy = getInteractionPolicy?.() ?? interactionPolicy;
+          const command = desktopCommandForKey(event, getDraft(), policy);
           executeEditorCommand(command, event, {
             source: draftInput,
             onCommit,
+            onReopenPrevious,
             onSwitchRole,
           });
         };
         const handleSubmit = (event) => {
           event.preventDefault();
-          onCommit(draftInput);
+          onCommit(draftInput, COMMAND_COMMIT);
         };
 
         draftInput.addEventListener("input", onDraftInput);
         draftInput.addEventListener("keydown", handleKeydown);
-        roleButton.addEventListener("click", onSwitchRole);
+        roleButton.addEventListener("click", () => {
+          onSwitchRole({ source: draftInput, preserveSelection: false });
+        });
         composer.addEventListener("submit", handleSubmit);
       }
 
@@ -2884,12 +3227,14 @@
         draftInput,
         roleButton,
         interactionPolicy,
+        getInteractionPolicy,
         onDraftInput,
         onCommit,
         onSwitchRole,
       }) {
         const handleKeydown = (event) => {
-          const command = mobileCommandForKey(event, interactionPolicy);
+          const policy = getInteractionPolicy?.() ?? interactionPolicy;
+          const command = mobileCommandForKey(event, policy);
           executeEditorCommand(command, event, {
             source: draftInput,
             onCommit,
@@ -2898,12 +3243,14 @@
         };
         const handleSubmit = (event) => {
           event.preventDefault();
-          onCommit(draftInput);
+          onCommit(draftInput, COMMAND_COMMIT);
         };
 
         draftInput.addEventListener("input", onDraftInput);
         draftInput.addEventListener("keydown", handleKeydown);
-        roleButton.addEventListener("click", onSwitchRole);
+        roleButton.addEventListener("click", () => {
+          onSwitchRole({ source: draftInput, preserveSelection: false });
+        });
         composer.addEventListener("submit", handleSubmit);
       }
 
@@ -2911,6 +3258,493 @@
         executeEditorCommand,
         bindDesktopEditor,
         bindMobileEditor,
+      });
+      })();
+
+      (() => {
+      const INLINE_EDITOR_SELECTOR = ".desktop-message__text";
+      const VERTICAL_KEYS = new Set(["ArrowUp", "ArrowDown"]);
+      const HORIZONTAL_KEYS = new Set(["ArrowLeft", "ArrowRight"]);
+
+      function graphemeBoundaries(text) {
+        const boundaries = [0];
+        if (typeof Intl?.Segmenter === "function") {
+          const segmenter = new Intl.Segmenter(undefined, { granularity: "grapheme" });
+          for (const { index, segment } of segmenter.segment(text)) {
+            const end = index + segment.length;
+            if (end > boundaries.at(-1)) {
+              boundaries.push(end);
+            }
+          }
+          return boundaries;
+        }
+
+        let offset = 0;
+        for (const character of text) {
+          offset += character.length;
+          boundaries.push(offset);
+        }
+        return boundaries;
+      }
+
+      function lineTolerance(position) {
+        return Math.max(2, (position?.height ?? 0) * 0.35);
+      }
+
+      function edgeLineTop(positions, edge) {
+        const tops = positions.map(({ top }) => top);
+        return edge === "first" ? Math.min(...tops) : Math.max(...tops);
+      }
+
+      function positionsOnEdgeLine(positions, edge) {
+        if (positions.length === 0) {
+          return [];
+        }
+
+        const lineTop = edgeLineTop(positions, edge);
+        return positions.filter(
+          (position) => Math.abs(position.top - lineTop) <= lineTolerance(position),
+        );
+      }
+
+      function isCaretOnEdgeLine(positions, caretPosition, edge) {
+        if (positions.length === 0 || !caretPosition) {
+          return true;
+        }
+
+        const lineTop = edgeLineTop(positions, edge);
+        return Math.abs(caretPosition.top - lineTop) <= lineTolerance(caretPosition);
+      }
+
+      function closestOffsetOnLine(positions, edge, preferredX) {
+        const candidates = positionsOnEdgeLine(positions, edge);
+        if (candidates.length === 0) {
+          return 0;
+        }
+
+        return candidates.reduce((closest, candidate) => {
+          const candidateDistance = Math.abs(candidate.left - preferredX);
+          const closestDistance = Math.abs(closest.left - preferredX);
+          if (candidateDistance !== closestDistance) {
+            return candidateDistance < closestDistance ? candidate : closest;
+          }
+          return candidate.offset > closest.offset ? candidate : closest;
+        }).offset;
+      }
+
+      function rangeRectForOffset(node, offset, host) {
+        const range = document.createRange();
+        range.setStart(node, offset);
+        range.collapse(true);
+        const collapsedRect = range.getClientRects()[0] ?? range.getBoundingClientRect();
+        if (collapsedRect && (collapsedRect.height > 0 || collapsedRect.width > 0)) {
+          return collapsedRect;
+        }
+
+        const textLength = node.data.length;
+        if (textLength > 0) {
+          const characterRange = document.createRange();
+          if (offset < textLength) {
+            characterRange.setStart(node, offset);
+            characterRange.setEnd(node, Math.min(textLength, offset + 1));
+            const rect = characterRange.getClientRects()[0] ?? characterRange.getBoundingClientRect();
+            if (rect) {
+              return {
+                left: rect.left,
+                top: rect.top,
+                right: rect.left,
+                bottom: rect.bottom,
+                width: 0,
+                height: rect.height,
+              };
+            }
+          } else {
+            characterRange.setStart(node, Math.max(0, offset - 1));
+            characterRange.setEnd(node, offset);
+            const rects = [...characterRange.getClientRects()];
+            const rect = rects.at(-1) ?? characterRange.getBoundingClientRect();
+            if (rect) {
+              return {
+                left: rect.right,
+                top: rect.top,
+                right: rect.right,
+                bottom: rect.bottom,
+                width: 0,
+                height: rect.height,
+              };
+            }
+          }
+        }
+
+        const hostRect = host.getBoundingClientRect();
+        const lineHeight = Number.parseFloat(getComputedStyle(host).lineHeight) || hostRect.height;
+        return {
+          left: hostRect.left,
+          top: hostRect.top,
+          right: hostRect.left,
+          bottom: hostRect.top + lineHeight,
+          width: 0,
+          height: lineHeight,
+        };
+      }
+
+      function positionForOffset(
+        node,
+        offset,
+        host,
+        horizontalScroll = 0,
+        verticalScroll = 0,
+      ) {
+        const rect = rangeRectForOffset(node, offset, host);
+        return {
+          offset,
+          left: rect.left - horizontalScroll,
+          top: rect.top - verticalScroll,
+          bottom: rect.top - verticalScroll + rect.height,
+          height: rect.height,
+        };
+      }
+
+      function createInlineMeasurement(editor) {
+        const text = editor.textContent ?? "";
+        let node = editor.firstChild;
+        if (!node || node.nodeType !== Node.TEXT_NODE) {
+          node = document.createTextNode(text);
+          editor.replaceChildren(node);
+        }
+
+        const positions = graphemeBoundaries(text).map((offset) =>
+          positionForOffset(node, offset, editor),
+        );
+        return {
+          positions,
+          positionAt(offset) {
+            return positionForOffset(node, offset, editor);
+          },
+          destroy() {},
+        };
+      }
+
+      const MIRRORED_STYLE_PROPERTIES = [
+        "borderBottomWidth",
+        "borderLeftWidth",
+        "borderRightWidth",
+        "borderTopWidth",
+        "boxSizing",
+        "direction",
+        "fontFamily",
+        "fontFeatureSettings",
+        "fontKerning",
+        "fontSize",
+        "fontStretch",
+        "fontStyle",
+        "fontVariant",
+        "fontWeight",
+        "letterSpacing",
+        "lineHeight",
+        "overflowWrap",
+        "paddingBottom",
+        "paddingLeft",
+        "paddingRight",
+        "paddingTop",
+        "tabSize",
+        "textAlign",
+        "textIndent",
+        "textTransform",
+        "wordBreak",
+        "wordSpacing",
+      ];
+
+      function createTextareaMeasurement(textarea) {
+        const computed = getComputedStyle(textarea);
+        const rect = textarea.getBoundingClientRect();
+        const mirror = document.createElement("div");
+        const text = textarea.value;
+
+        for (const property of MIRRORED_STYLE_PROPERTIES) {
+          mirror.style[property] = computed[property];
+        }
+        Object.assign(mirror.style, {
+          position: "fixed",
+          visibility: "hidden",
+          pointerEvents: "none",
+          zIndex: "-1",
+          left: `${rect.left}px`,
+          top: `${rect.top}px`,
+          width: `${rect.width}px`,
+          height: `${rect.height}px`,
+          minHeight: "0",
+          maxHeight: "none",
+          margin: "0",
+          overflowX: "hidden",
+          overflowY: textarea.scrollHeight > textarea.clientHeight ? "scroll" : "hidden",
+          resize: "none",
+          whiteSpace: "pre-wrap",
+        });
+        mirror.textContent = `${text}\u200b`;
+        document.body.append(mirror);
+
+        const node = mirror.firstChild;
+        const positions = graphemeBoundaries(text).map((offset) =>
+          positionForOffset(
+            node,
+            offset,
+            mirror,
+            textarea.scrollLeft,
+            textarea.scrollTop,
+          ),
+        );
+        return {
+          positions,
+          positionAt(offset) {
+            return positionForOffset(
+              node,
+              offset,
+              mirror,
+              textarea.scrollLeft,
+              textarea.scrollTop,
+            );
+          },
+          destroy() {
+            mirror.remove();
+          },
+        };
+      }
+
+      function selectionOffsets(editor, draftInput) {
+        if (editor === draftInput) {
+          return {
+            start: editor.selectionStart,
+            end: editor.selectionEnd,
+          };
+        }
+
+        const selection = window.getSelection();
+        if (!selection || selection.rangeCount === 0) {
+          return null;
+        }
+        const range = selection.getRangeAt(0);
+        if (!editor.contains(range.startContainer) || !editor.contains(range.endContainer)) {
+          return null;
+        }
+
+        const beforeStart = range.cloneRange();
+        beforeStart.selectNodeContents(editor);
+        beforeStart.setEnd(range.startContainer, range.startOffset);
+        const beforeEnd = range.cloneRange();
+        beforeEnd.selectNodeContents(editor);
+        beforeEnd.setEnd(range.endContainer, range.endOffset);
+        return {
+          start: beforeStart.toString().length,
+          end: beforeEnd.toString().length,
+        };
+      }
+
+      function setInlineSelection(editor, offset) {
+        const range = document.createRange();
+        const node = editor.firstChild;
+        if (node?.nodeType === Node.TEXT_NODE) {
+          range.setStart(node, Math.min(offset, node.data.length));
+        } else {
+          range.setStart(editor, 0);
+        }
+        range.collapse(true);
+        const selection = window.getSelection();
+        selection.removeAllRanges();
+        selection.addRange(range);
+      }
+
+      function editorText(editor, draftInput) {
+        return editor === draftInput ? editor.value : editor.textContent ?? "";
+      }
+
+      function focusAtOffset(editor, offset, draftInput, { revealElement = true } = {}) {
+        editor.focus({ preventScroll: true });
+        if (editor === draftInput) {
+          editor.setSelectionRange(offset, offset);
+        } else {
+          setInlineSelection(editor, offset);
+        }
+        if (revealElement) {
+          editor.scrollIntoView({ block: "nearest", inline: "nearest" });
+        }
+      }
+
+      function isPlainArrow(event) {
+        return !event.ctrlKey && !event.altKey && !event.shiftKey && !event.metaKey;
+      }
+
+      function createDesktopCaretNavigation({
+        messagesContainer,
+        draftInput,
+        onRevealCaret = () => {},
+      }) {
+        let preferredX = null;
+        let revealFrame = null;
+
+        function reset() {
+          preferredX = null;
+        }
+
+        function editors() {
+          return [
+            ...messagesContainer.querySelectorAll(INLINE_EDITOR_SELECTOR),
+            draftInput,
+          ];
+        }
+
+        function sourceFromEvent(event) {
+          if (event.target === draftInput) {
+            return draftInput;
+          }
+          return event.target.closest?.(INLINE_EDITOR_SELECTOR) ?? null;
+        }
+
+        function scheduleCaretReveal() {
+          if (revealFrame !== null) {
+            window.cancelAnimationFrame(revealFrame);
+          }
+          revealFrame = window.requestAnimationFrame(() => {
+            revealFrame = null;
+            const active = document.activeElement;
+            const source = active === draftInput || active?.matches?.(INLINE_EDITOR_SELECTOR)
+              ? active
+              : null;
+            if (!source) {
+              return;
+            }
+
+            const selected = selectionOffsets(source, draftInput);
+            if (!selected || selected.start !== selected.end) {
+              return;
+            }
+            const measurement = source === draftInput
+              ? createTextareaMeasurement(source)
+              : createInlineMeasurement(source);
+            try {
+              onRevealCaret(measurement.positionAt(selected.start));
+            } finally {
+              measurement.destroy();
+            }
+          });
+        }
+
+        function moveHorizontally(event, source, selection, sequence) {
+          reset();
+          if (selection.start !== selection.end) {
+            return false;
+          }
+
+          const index = sequence.indexOf(source);
+          const textLength = editorText(source, draftInput).length;
+          const movingBackward = event.key === "ArrowLeft";
+          const atBoundary = movingBackward
+            ? selection.start === 0
+            : selection.end === textLength;
+          if (!atBoundary) {
+            return false;
+          }
+
+          const target = sequence[index + (movingBackward ? -1 : 1)];
+          event.preventDefault();
+          if (!target) {
+            return true;
+          }
+
+          const targetOffset = movingBackward
+            ? editorText(target, draftInput).length
+            : 0;
+          focusAtOffset(target, targetOffset, draftInput);
+          return true;
+        }
+
+        function moveVertically(event, source, selection, sequence) {
+          if (selection.start !== selection.end) {
+            reset();
+            return false;
+          }
+
+          const movingBackward = event.key === "ArrowUp";
+          const currentEdge = movingBackward ? "first" : "last";
+          const targetEdge = movingBackward ? "last" : "first";
+          const createMeasurement = source === draftInput
+            ? createTextareaMeasurement
+            : createInlineMeasurement;
+          const measurement = createMeasurement(source);
+
+          try {
+            const caretPosition = measurement.positionAt(selection.start);
+            if (preferredX === null) {
+              preferredX = caretPosition.left;
+            }
+            if (!isCaretOnEdgeLine(measurement.positions, caretPosition, currentEdge)) {
+              return false;
+            }
+          } finally {
+            measurement.destroy();
+          }
+
+          const index = sequence.indexOf(source);
+          const target = sequence[index + (movingBackward ? -1 : 1)];
+          event.preventDefault();
+          if (!target) {
+            return true;
+          }
+
+          const targetMeasurement = target === draftInput
+            ? createTextareaMeasurement(target)
+            : createInlineMeasurement(target);
+          try {
+            const targetOffset = closestOffsetOnLine(
+              targetMeasurement.positions,
+              targetEdge,
+              preferredX,
+            );
+            focusAtOffset(target, targetOffset, draftInput, { revealElement: false });
+          } finally {
+            targetMeasurement.destroy();
+          }
+          return true;
+        }
+
+        function handleKeydown(event) {
+          const source = sourceFromEvent(event);
+          if (!source || event.defaultPrevented || event.isComposing || event.keyCode === 229) {
+            return false;
+          }
+
+          if (!VERTICAL_KEYS.has(event.key) && !HORIZONTAL_KEYS.has(event.key)) {
+            reset();
+            return false;
+          }
+          if (!isPlainArrow(event)) {
+            reset();
+            return false;
+          }
+
+          const selection = selectionOffsets(source, draftInput);
+          if (!selection) {
+            reset();
+            return false;
+          }
+          const sequence = editors();
+
+          if (HORIZONTAL_KEYS.has(event.key)) {
+            return moveHorizontally(event, source, selection, sequence);
+          }
+          const handled = moveVertically(event, source, selection, sequence);
+          scheduleCaretReveal();
+          return handled;
+        }
+
+        return Object.freeze({ handleKeydown, reset });
+      }
+
+      globalThis.MyPolyphonyCaretNavigation = Object.freeze({
+        closestOffsetOnLine,
+        createDesktopCaretNavigation,
+        graphemeBoundaries,
+        isCaretOnEdgeLine,
       });
       })();
 
@@ -2937,6 +3771,11 @@
         bottomInset: 32,
       });
 
+      const DESKTOP_CARET_VIEWPORT_POLICY = Object.freeze({
+        topInset: 16,
+        bottomInset: 32,
+      });
+
       function calculateRevealDelta(targetBottom, viewportBottom, bottomInset = 0) {
         for (const value of [targetBottom, viewportBottom, bottomInset]) {
           if (!Number.isFinite(value)) {
@@ -2945,6 +3784,62 @@
         }
 
         return Math.max(0, targetBottom + bottomInset - viewportBottom);
+      }
+
+      function calculateCaretRevealDelta({
+        caretTop,
+        caretBottom,
+        viewportTop,
+        viewportBottom,
+        topInset = 0,
+        bottomInset = 0,
+      }) {
+        for (const value of [
+          caretTop,
+          caretBottom,
+          viewportTop,
+          viewportBottom,
+          topInset,
+          bottomInset,
+        ]) {
+          if (!Number.isFinite(value)) {
+            throw new TypeError("キャレット追従の計算値が正しくありません。");
+          }
+        }
+
+        const visibleTop = viewportTop + topInset;
+        const visibleBottom = viewportBottom - bottomInset;
+        if (caretTop < visibleTop) {
+          return caretTop - visibleTop;
+        }
+        if (caretBottom > visibleBottom) {
+          return caretBottom - visibleBottom;
+        }
+        return 0;
+      }
+
+      function revealCaretLine({
+        caretRect,
+        policy = DESKTOP_CARET_VIEWPORT_POLICY,
+        viewportTop = 0,
+        windowObject = globalThis.window,
+      }) {
+        if (!caretRect || !policy || !windowObject) {
+          throw new TypeError("キャレットを表示するための画面情報がありません。");
+        }
+
+        const delta = calculateCaretRevealDelta({
+          caretTop: caretRect.top,
+          caretBottom: caretRect.bottom,
+          viewportTop,
+          viewportBottom: windowObject.innerHeight,
+          topInset: policy.topInset ?? 0,
+          bottomInset: policy.bottomInset ?? 0,
+        });
+        if (delta !== 0) {
+          windowObject.scrollBy({ top: delta, behavior: "auto" });
+        }
+        return delta;
       }
 
       function applyAfterCommitScroll({
@@ -3003,9 +3898,12 @@
         STATIC_DESKTOP_VIEWPORT_POLICY,
         CHAT_MOBILE_VIEWPORT_POLICY,
         FOLLOW_INPUT_VIEWPORT_POLICY,
+        DESKTOP_CARET_VIEWPORT_POLICY,
         calculateRevealDelta,
+        calculateCaretRevealDelta,
         applyAfterCommitScroll,
         focusDraftInput,
+        revealCaretLine,
       });
       })();
 
@@ -3015,24 +3913,35 @@
         STORAGE_KEY,
         commitDraft,
         createExportBasename,
+        createId,
         createInitialState,
-        deleteMessage,
         editMessage,
+        mergeMessageBackward,
+        mergeMessageForward,
+        oppositeRole,
         parseDialogue,
         parseStoredState,
+        pullLastMessageIntoDraft,
         refreshStartedAtIfEmpty,
         serializeDialogue,
         serializePlainText,
         serializeStoredState,
+        setMessageRole,
         setNextRole,
+        splitMessage,
         toggleNextRole,
         updateDraft,
       } = globalThis.MyPolyphonyModel;
       const {
+        DEFAULT_ENTER_BEHAVIOR,
         DEFAULT_FONT_PREFERENCE,
+        ENTER_BEHAVIOR_ALTERNATE,
+        ENTER_BEHAVIOR_PRESERVE,
+        ENTER_BEHAVIOR_STORAGE_KEY,
         FONT_PREFERENCE_LABELS,
         FONT_STORAGE_KEY,
         isViewMode,
+        normalizeEnterBehavior,
         normalizeFontPreference,
       } = globalThis.MyPolyphonyPreferences;
       const { readStorage, removeStorage, writeStorage } = globalThis.MyPolyphonyStorage;
@@ -3047,50 +3956,84 @@
         roleLabel,
       } = globalThis.MyPolyphonyView;
       const {
-        ALTERNATING_INTERACTION_POLICY,
+        COMMAND_COMMIT,
+        COMMAND_COMMIT_PRESERVE_ROLE,
         COMMAND_SWITCH_ROLE,
-        ROLE_AFTER_COMMIT_ALTERNATE,
+        DIALOGUE_ENTER_INTERACTION_POLICY,
+        DIALOGUE_ENTER_PRESERVE_INTERACTION_POLICY,
+        createShiftDoubleTapDetector,
+        desktopCommandForKey,
         globalCommandForKey,
         roleAfterCommit,
-        roleAfterDelete,
         roleAfterImport,
       } = globalThis.MyPolyphonyInteraction;
       const { bindDesktopEditor, bindMobileEditor } = globalThis.MyPolyphonyEditors;
+      const { createDesktopCaretNavigation } = globalThis.MyPolyphonyCaretNavigation;
       const {
         CHAT_MOBILE_VIEWPORT_POLICY,
-        STATIC_DESKTOP_VIEWPORT_POLICY,
+        DESKTOP_CARET_VIEWPORT_POLICY,
+        FOLLOW_INPUT_VIEWPORT_POLICY,
         applyAfterCommitScroll,
         focusDraftInput,
+        revealCaretLine,
       } = globalThis.MyPolyphonyViewport;
 
       const elements = collectElements(document);
+      const desktopCaretNavigation = createDesktopCaretNavigation({
+        messagesContainer: elements.desktopMessages,
+        draftInput: elements.desktopDraft,
+        onRevealCaret(caretRect) {
+          const headerBottom = document.querySelector(".site-header")
+            ?.getBoundingClientRect().bottom ?? 0;
+          revealCaretLine({
+            caretRect,
+            policy: DESKTOP_CARET_VIEWPORT_POLICY,
+            viewportTop: Math.max(0, headerBottom),
+          });
+        },
+      });
+      const shiftDoubleTapDetector = createShiftDoubleTapDetector();
 
       // 各表示で採用する操作方針。共有データを変えず、表示ごとに別方針へ交換できる。
-      const desktopInteractionPolicy = ALTERNATING_INTERACTION_POLICY;
-      const mobileInteractionPolicy = ALTERNATING_INTERACTION_POLICY;
-      const desktopViewportPolicy = STATIC_DESKTOP_VIEWPORT_POLICY;
+      const desktopInteractionPolicies = Object.freeze({
+        [ENTER_BEHAVIOR_ALTERNATE]: DIALOGUE_ENTER_INTERACTION_POLICY,
+        [ENTER_BEHAVIOR_PRESERVE]: DIALOGUE_ENTER_PRESERVE_INTERACTION_POLICY,
+      });
+      const mobileInteractionPolicies = Object.freeze({
+        [ENTER_BEHAVIOR_ALTERNATE]: DIALOGUE_ENTER_INTERACTION_POLICY,
+        [ENTER_BEHAVIOR_PRESERVE]: DIALOGUE_ENTER_PRESERVE_INTERACTION_POLICY,
+      });
+      const desktopViewportPolicy = FOLLOW_INPUT_VIEWPORT_POLICY;
       const mobileViewportPolicy = CHAT_MOBILE_VIEWPORT_POLICY;
 
       // アプリの一時状態。保存される対話データの形は model.js が定義する。
       const mobileMedia = window.matchMedia("(max-width: 767px)");
       let state = createInitialState();
-      let viewMode = mobileMedia.matches ? "mobile" : "desktop";
+      const availableViewModes = new Set(
+        elements.modeButtons
+          .filter((button) => button.getAttribute("aria-disabled") !== "true")
+          .map((button) => button.dataset.mode),
+      );
+      let viewMode = availableViewModes.has("mobile") && mobileMedia.matches ? "mobile" : "desktop";
+      let enterBehavior = DEFAULT_ENTER_BEHAVIOR;
       let fontPreference = DEFAULT_FONT_PREFERENCE;
       let hasManualMode = false;
-      let editingId = null;
       let saveTimer = null;
       let toastTimer = null;
       let storageWriteBlocked = false;
       let immersiveMode = "off";
 
       function interactionPolicyForMode(mode = viewMode) {
-        return mode === "mobile" ? mobileInteractionPolicy : desktopInteractionPolicy;
+        const policies = mode === "mobile"
+          ? mobileInteractionPolicies
+          : desktopInteractionPolicies;
+        return policies[enterBehavior];
       }
 
       function interactionPolicyForSource(source) {
-        return source === elements.mobileDraft
-          ? mobileInteractionPolicy
-          : desktopInteractionPolicy;
+        return interactionPolicyForMode(
+          source === elements.mobileDraft ? "mobile" : "desktop",
+        );
       }
 
       function viewportPolicyForMode(mode = viewMode) {
@@ -3098,6 +4041,45 @@
       }
 
       // 設定と初期状態の復元
+      function renderEnterBehaviorHint() {
+        const preservesRole = enterBehavior === ENTER_BEHAVIOR_PRESERVE;
+        elements.desktopHintAlternate.hidden = preservesRole;
+        elements.desktopHintPreserve.hidden = !preservesRole;
+      }
+
+      function applyEnterBehavior(value) {
+        enterBehavior = normalizeEnterBehavior(value);
+        document.documentElement.dataset.enterBehavior = enterBehavior;
+        renderEnterBehaviorHint();
+      }
+
+      function persistEnterBehavior() {
+        const result = writeStorage(ENTER_BEHAVIOR_STORAGE_KEY, enterBehavior);
+        if (result.ok) {
+          return true;
+        }
+
+        showNotice(
+          "Enterキーの設定をこのブラウザに保存できませんでした。現在のページでは選んだ働きを利用できます。",
+          "warning",
+        );
+        console.warn(result.error);
+        return false;
+      }
+
+      function toggleEnterBehavior() {
+        const nextBehavior = enterBehavior === ENTER_BEHAVIOR_ALTERNATE
+          ? ENTER_BEHAVIOR_PRESERVE
+          : ENTER_BEHAVIOR_ALTERNATE;
+        applyEnterBehavior(nextBehavior);
+        const persisted = persistEnterBehavior();
+        const message = enterBehavior === ENTER_BEHAVIOR_PRESERVE
+          ? "Enterで同じ声を続けます"
+          : "Enterで次の声へ移ります";
+        showToast(persisted ? message : `${message}（保存なし）`);
+        announce(`${message}。`);
+      }
+
       function applyFontPreference(value) {
         fontPreference = normalizeFontPreference(value);
         document.documentElement.dataset.dialogueFont = fontPreference;
@@ -3156,7 +4138,7 @@
         const modeResult = readStorage(MODE_STORAGE_KEY);
         if (modeResult.ok) {
           const storedMode = modeResult.value;
-          if (isViewMode(storedMode)) {
+          if (isViewMode(storedMode) && availableViewModes.has(storedMode)) {
             viewMode = storedMode;
             hasManualMode = true;
           }
@@ -3170,6 +4152,14 @@
           applyFontPreference(fontResult.value);
         } else {
           console.warn("書体の設定を読み込めませんでした。", fontResult.error);
+        }
+
+        applyEnterBehavior(DEFAULT_ENTER_BEHAVIOR);
+        const enterBehaviorResult = readStorage(ENTER_BEHAVIOR_STORAGE_KEY);
+        if (enterBehaviorResult.ok) {
+          applyEnterBehavior(enterBehaviorResult.value);
+        } else {
+          console.warn("Enterキーの設定を読み込めませんでした。", enterBehaviorResult.error);
         }
       }
 
@@ -3267,7 +4257,7 @@
 
       // 表示モードとモバイル全画面表示
       function setMode(mode, { manual = false, focus = false } = {}) {
-        if (!isViewMode(mode)) {
+        if (!isViewMode(mode) || !availableViewModes.has(mode)) {
           return;
         }
 
@@ -3438,23 +4428,32 @@
         syncDraftInputs();
       }
 
-      function handleRoleToggle() {
-        const interactionPolicy = interactionPolicyForMode();
+      function handleRoleToggle({ source = null, preserveSelection = false } = {}) {
         state = toggleNextRole(state);
         persistNow();
         renderComposer();
-        focusComposer();
-        const afterCommitMessage =
-          interactionPolicy.roleAfterCommit === ROLE_AFTER_COMMIT_ALTERNATE
-            ? "発言後は自動で交替します。"
-            : "発言後もこの話者を続けます。";
+        if (!preserveSelection || document.activeElement !== source) {
+          focusComposer();
+        }
+        const afterCommitMessage = enterBehavior === ENTER_BEHAVIOR_PRESERVE
+          ? "Enterで発言した後もこの話者を続けます。"
+          : "Enterで発言した後は自動で交替します。";
         announce(`次の話者を${roleLabel(state.nextRole)}に切り替えました。${afterCommitMessage}`);
+      }
+
+      function handleShiftDoubleTapKeydown(event) {
+        shiftDoubleTapDetector.handleKeydown(event);
+      }
+
+      function handleShiftDoubleTapKeyup(event) {
+        if (shiftDoubleTapDetector.handleKeyup(event)) {
+          toggleEnterBehavior();
+        }
       }
 
       function handleRoleShortcut(event) {
         const command = globalCommandForKey(event, {
           policy: interactionPolicyForMode(),
-          editorOpen: elements.editDialog.open,
         });
         if (command !== COMMAND_SWITCH_ROLE) {
           return;
@@ -3475,7 +4474,7 @@
             applyAfterCommitScroll({
               policy: viewportPolicyForMode(),
               feed: viewMode === "mobile" ? elements.mobileFeed : null,
-              input: viewMode === "mobile" ? elements.mobileDraft : elements.desktopDraft,
+              input: viewMode === "mobile" ? elements.mobileDraft : elements.desktopComposer,
               windowObject: window,
             });
           });
@@ -3493,12 +4492,13 @@
 
       // 対話篇の編集操作
       function handleDraftInput(event) {
+        desktopCaretNavigation.reset();
         state = updateDraft(state, event.currentTarget.value);
         syncDraftInputs(event.currentTarget);
         schedulePersist();
       }
 
-      function commitCurrentDraft(source) {
+      function commitCurrentDraft(source, command = COMMAND_COMMIT) {
         state = updateDraft(state, source.value);
         if (state.draft.trim().length === 0) {
           source.setCustomValidity("発言を入力してください。");
@@ -3510,7 +4510,10 @@
         const committedRole = state.nextRole;
         const interactionPolicy = interactionPolicyForSource(source);
         state = commitDraft(state);
-        state = setNextRole(state, roleAfterCommit(committedRole, interactionPolicy));
+        state = setNextRole(
+          state,
+          roleAfterCommit(committedRole, interactionPolicy, command),
+        );
         persistNow();
         renderAll({ focus: true, scroll: true });
         announce(`${roleLabel(committedRole)}の発言を追加しました。次は${roleLabel(state.nextRole)}です。`);
@@ -3520,81 +4523,253 @@
         return state.messages.find((message) => message.id === id);
       }
 
-      function openEditor(id) {
-        const message = findMessage(id);
-        if (!message) {
-          return;
+      function inlineEditorFromEvent(event) {
+        return event.target.closest?.(".desktop-message__text") ?? null;
+      }
+
+      function findInlineEditor(id) {
+        return [...elements.desktopMessages.querySelectorAll(".desktop-message__text")]
+          .find((editor) => editor.dataset.messageId === id) ?? null;
+      }
+
+      function selectionOffsets(editor) {
+        const selection = window.getSelection();
+        if (!selection || selection.rangeCount === 0) {
+          return null;
         }
 
-        editingId = id;
-        elements.editRoleLabel.textContent = `${roleLabel(message.role)}の発言`;
-        elements.editText.value = message.text;
-        elements.editDialog.showModal();
+        const range = selection.getRangeAt(0);
+        if (
+          !editor.contains(range.startContainer) ||
+          !editor.contains(range.endContainer)
+        ) {
+          return null;
+        }
+
+        const beforeStart = range.cloneRange();
+        beforeStart.selectNodeContents(editor);
+        beforeStart.setEnd(range.startContainer, range.startOffset);
+        const beforeEnd = range.cloneRange();
+        beforeEnd.selectNodeContents(editor);
+        beforeEnd.setEnd(range.endContainer, range.endOffset);
+
+        return {
+          start: beforeStart.toString().length,
+          end: beforeEnd.toString().length,
+        };
+      }
+
+      function setInlineSelection(editor, start, end = start) {
+        const range = document.createRange();
+        const walker = document.createTreeWalker(editor, NodeFilter.SHOW_TEXT);
+        const points = [];
+        let traversed = 0;
+        let node = walker.nextNode();
+
+        while (node) {
+          const next = traversed + node.data.length;
+          if (points[0] === undefined && start <= next) {
+            points[0] = [node, start - traversed];
+          }
+          if (points[1] === undefined && end <= next) {
+            points[1] = [node, end - traversed];
+            break;
+          }
+          traversed = next;
+          node = walker.nextNode();
+        }
+
+        if (points[0] === undefined) {
+          points[0] = [editor, editor.childNodes.length];
+        }
+        if (points[1] === undefined) {
+          points[1] = [editor, editor.childNodes.length];
+        }
+
+        range.setStart(...points[0]);
+        range.setEnd(...points[1]);
+        const selection = window.getSelection();
+        selection.removeAllRanges();
+        selection.addRange(range);
+      }
+
+      function focusInlineEditor(id, start, end = start) {
         window.requestAnimationFrame(() => {
-          elements.editText.focus();
-          elements.editText.setSelectionRange(message.text.length, message.text.length);
+          const editor = findInlineEditor(id);
+          if (!editor) {
+            return;
+          }
+
+          editor.focus();
+          setInlineSelection(editor, start, end);
         });
       }
 
-      function closeEditor() {
-        editingId = null;
-        elements.editDialog.close();
+      function updateMobileMessageText(id, text) {
+        const article = [...elements.mobileMessages.querySelectorAll(".mobile-message")]
+          .find((message) => message.dataset.messageId === id);
+        const content = article?.querySelector(".mobile-message__content");
+        if (content) {
+          content.textContent = text;
+        }
       }
 
-      function saveEdit(event) {
-        event.preventDefault();
-        if (!editingId) {
+      function handleInlineMessageClick(event) {
+        desktopCaretNavigation.reset();
+        if (inlineEditorFromEvent(event)) {
           return;
         }
 
-        if (elements.editText.value.trim().length === 0) {
-          elements.editText.setCustomValidity("発言を入力してください。");
-          elements.editText.reportValidity();
-          elements.editText.setCustomValidity("");
+        const article = event.target.closest?.(".desktop-message");
+        if (!article) {
           return;
         }
 
-        state = editMessage(state, editingId, elements.editText.value);
-        persistNow();
-        closeEditor();
-        renderAll();
-        showToast("発言を更新しました");
-      }
-
-      function removeMessage(id) {
-        const message = findMessage(id);
+        const message = findMessage(article.dataset.messageId);
         if (!message) {
           return;
         }
 
-        const excerpt = message.text.replace(/\s+/g, " ").slice(0, 28);
-        if (!window.confirm(`「${excerpt}${message.text.length > 28 ? "…" : ""}」を削除しますか？`)) {
-          return;
-        }
-
-        const currentRole = state.nextRole;
-        const interactionPolicy = interactionPolicyForMode();
-        state = deleteMessage(state, id);
-        state = setNextRole(
-          state,
-          roleAfterDelete(state.messages, currentRole, interactionPolicy),
-        );
-        persistNow();
-        renderAll({ focus: true });
-        announce("発言を削除しました。");
+        focusInlineEditor(message.id, message.text.length);
       }
 
-      function handleMessageAction(event) {
-        const button = event.target.closest("button[data-action]");
-        if (!button) {
+      function handleInlineMessageInput(event) {
+        const editor = inlineEditorFromEvent(event);
+        if (!editor) {
           return;
         }
 
-        if (button.dataset.action === "edit") {
-          openEditor(button.dataset.id);
-        } else if (button.dataset.action === "delete") {
-          removeMessage(button.dataset.id);
+        desktopCaretNavigation.reset();
+        const selected = selectionOffsets(editor);
+        const rawText = editor.textContent ?? "";
+        const text = rawText.replace(/[\r\n]+/g, "");
+        if (rawText !== text) {
+          const rawOffset = selected?.start ?? text.length;
+          const offset = rawText.slice(0, rawOffset).replace(/[\r\n]+/g, "").length;
+          editor.textContent = text;
+          setInlineSelection(editor, offset);
         }
+
+        state = editMessage(state, editor.dataset.messageId, text);
+        persistNow();
+        updateMobileMessageText(editor.dataset.messageId, text);
+      }
+
+      function handleInlineMessageKeydown(event) {
+        const editor = inlineEditorFromEvent(event);
+        if (!editor || event.defaultPrevented || event.isComposing || event.keyCode === 229) {
+          return;
+        }
+
+        if (desktopCaretNavigation.handleKeydown(event)) {
+          return;
+        }
+
+        const message = findMessage(editor.dataset.messageId);
+        const selected = selectionOffsets(editor);
+        if (!message || !selected) {
+          return;
+        }
+
+        if (event.key === "Escape") {
+          event.preventDefault();
+          editor.blur();
+          return;
+        }
+
+        const index = state.messages.findIndex(({ id }) => id === message.id);
+        const collapsed = selected.start === selected.end;
+
+        if (event.key === "Backspace" && collapsed && selected.start === 0) {
+          event.preventDefault();
+          if (index === 0) {
+            return;
+          }
+
+          const previous = state.messages[index - 1];
+          const joinOffset = previous.text.length;
+          state = mergeMessageBackward(state, message.id);
+          persistNow();
+          renderMessages();
+          focusInlineEditor(previous.id, joinOffset);
+          return;
+        }
+
+        if (
+          event.key === "Delete" &&
+          collapsed &&
+          selected.end === message.text.length
+        ) {
+          event.preventDefault();
+          if (index === state.messages.length - 1) {
+            return;
+          }
+
+          const joinOffset = message.text.length;
+          state = mergeMessageForward(state, message.id);
+          persistNow();
+          renderMessages();
+          focusInlineEditor(message.id, joinOffset);
+          return;
+        }
+
+        if (event.key !== "Enter" && event.key !== "Tab") {
+          return;
+        }
+
+        const interactionPolicy = interactionPolicyForMode("desktop");
+        const command = desktopCommandForKey(
+          event,
+          message.text,
+          interactionPolicy,
+        );
+        if (command === COMMAND_SWITCH_ROLE) {
+          event.preventDefault();
+          state = setMessageRole(state, message.id, oppositeRole(message.role));
+          persistNow();
+          renderMessages();
+          focusInlineEditor(message.id, selected.start, selected.end);
+          announce(`${roleLabel(oppositeRole(message.role))}の発言に切り替えました。`);
+          return;
+        }
+        if (command !== COMMAND_COMMIT && command !== COMMAND_COMMIT_PRESERVE_ROLE) {
+          return;
+        }
+
+        event.preventDefault();
+        const newId = createId();
+        const newRole = roleAfterCommit(
+          message.role,
+          interactionPolicy,
+          command,
+        );
+        state = splitMessage(
+          state,
+          message.id,
+          selected.start,
+          selected.end,
+          newRole,
+          () => newId,
+        );
+        persistNow();
+        renderMessages();
+        focusInlineEditor(newId, 0);
+      }
+
+      function reopenPreviousMessage(source) {
+        if (state.messages.length === 0 || state.draft.length > 0) {
+          return;
+        }
+
+        state = pullLastMessageIntoDraft(state);
+        persistNow();
+        renderMessages();
+        renderComposer();
+        window.requestAnimationFrame(() => {
+          focusDraftInput(source, desktopViewportPolicy);
+          source.setSelectionRange(state.draft.length, state.draft.length);
+        });
+        announce("直前の発言を入力欄へ戻しました。");
       }
 
       // 読み込みと書き出し
@@ -3731,6 +4906,10 @@
 
       // イベントの接続をここへ集約し、各補助モジュールを副作用から切り離す。
       function bindEvents() {
+        document.addEventListener("keydown", handleShiftDoubleTapKeydown);
+        document.addEventListener("keyup", handleShiftDoubleTapKeyup);
+        document.addEventListener("pointerdown", shiftDoubleTapDetector.reset);
+        window.addEventListener("blur", shiftDoubleTapDetector.reset);
         document.addEventListener("keydown", handleRoleShortcut);
         document.addEventListener("keydown", (event) => {
           if (event.key === "Escape" && elements.settingsMenu.open) {
@@ -3758,14 +4937,21 @@
           }
         });
 
+        elements.desktopDraft.addEventListener(
+          "keydown",
+          desktopCaretNavigation.handleKeydown,
+        );
+        elements.desktopDraft.addEventListener("pointerdown", desktopCaretNavigation.reset);
+
         bindDesktopEditor({
           composer: elements.desktopComposer,
           draftInput: elements.desktopDraft,
           roleButton: elements.desktopRoleLabel,
           getDraft: () => state.draft,
-          interactionPolicy: desktopInteractionPolicy,
+          getInteractionPolicy: () => interactionPolicyForMode("desktop"),
           onDraftInput: handleDraftInput,
           onCommit: commitCurrentDraft,
+          onReopenPrevious: reopenPreviousMessage,
           onSwitchRole: handleRoleToggle,
         });
 
@@ -3773,15 +4959,16 @@
           composer: elements.mobileComposer,
           draftInput: elements.mobileDraft,
           roleButton: elements.mobileRoleLabel,
-          interactionPolicy: mobileInteractionPolicy,
+          getInteractionPolicy: () => interactionPolicyForMode("mobile"),
           onDraftInput: handleDraftInput,
           onCommit: commitCurrentDraft,
           onSwitchRole: handleRoleToggle,
         });
         elements.mobileFullscreenButton.addEventListener("click", toggleMobileFullscreen);
 
-        elements.desktopMessages.addEventListener("click", handleMessageAction);
-        elements.mobileMessages.addEventListener("click", handleMessageAction);
+        elements.desktopMessages.addEventListener("click", handleInlineMessageClick);
+        elements.desktopMessages.addEventListener("input", handleInlineMessageInput);
+        elements.desktopMessages.addEventListener("keydown", handleInlineMessageKeydown);
 
         elements.importButton.addEventListener("click", () => elements.importInput.click());
         elements.importInput.addEventListener("change", importJson);
@@ -3791,22 +4978,6 @@
         elements.resetButton.addEventListener("click", resetDialogue);
         elements.loadExampleButton.addEventListener("click", loadToolSpecificationExample);
         elements.dismissNoticeButton.addEventListener("click", dismissNotice);
-
-        elements.editForm.addEventListener("submit", saveEdit);
-        elements.closeEditButton.addEventListener("click", closeEditor);
-        elements.cancelEditButton.addEventListener("click", closeEditor);
-        elements.editText.addEventListener("keydown", (event) => {
-          if (event.key === "Enter" && (event.ctrlKey || event.metaKey) && !event.isComposing) {
-            event.preventDefault();
-            elements.editForm.requestSubmit();
-          }
-        });
-
-        elements.editDialog.addEventListener("click", (event) => {
-          if (event.target === elements.editDialog) {
-            closeEditor();
-          }
-        });
 
         document.addEventListener("fullscreenchange", handleFullscreenChange);
         document.addEventListener("fullscreenerror", handleFullscreenError);

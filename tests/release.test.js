@@ -69,6 +69,23 @@ test("配布用index.htmlをdev.htmlと編集元へ同期している", async ()
   );
 });
 
+test("配布用index.htmlだけチャットを近日公開として選択不能にする", async () => {
+  const [developmentHtml, distributionHtml] = await Promise.all([
+    readProjectFile("dev.html"),
+    readProjectFile("index.html"),
+  ]);
+
+  assert.match(
+    developmentHtml,
+    /data-mode="mobile" aria-pressed="false">\s*チャット\s*<\/button>/,
+  );
+  assert.doesNotMatch(developmentHtml, /id="chatComingSoon"/);
+  assert.match(
+    distributionHtml,
+    /data-mode="mobile"[\s\S]*?aria-disabled="true"[\s\S]*?チャット[\s\S]*?id="chatComingSoon"[\s\S]*?近日公開予定/,
+  );
+});
+
 test("配布生成は日常検査から分離された明示的なコマンドである", async () => {
   const [packageSource, buildSource] = await Promise.all([
     readProjectFile("package.json"),

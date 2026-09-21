@@ -100,7 +100,12 @@ const mobileViewportPolicy = CHAT_MOBILE_VIEWPORT_POLICY;
 // アプリの一時状態。保存される対話データの形は model.js が定義する。
 const mobileMedia = window.matchMedia("(max-width: 767px)");
 let state = createInitialState();
-let viewMode = mobileMedia.matches ? "mobile" : "desktop";
+const availableViewModes = new Set(
+  elements.modeButtons
+    .filter((button) => button.getAttribute("aria-disabled") !== "true")
+    .map((button) => button.dataset.mode),
+);
+let viewMode = availableViewModes.has("mobile") && mobileMedia.matches ? "mobile" : "desktop";
 let enterBehavior = DEFAULT_ENTER_BEHAVIOR;
 let fontPreference = DEFAULT_FONT_PREFERENCE;
 let hasManualMode = false;
@@ -224,7 +229,7 @@ function loadInitialState() {
   const modeResult = readStorage(MODE_STORAGE_KEY);
   if (modeResult.ok) {
     const storedMode = modeResult.value;
-    if (isViewMode(storedMode)) {
+    if (isViewMode(storedMode) && availableViewModes.has(storedMode)) {
       viewMode = storedMode;
       hasManualMode = true;
     }
@@ -343,7 +348,7 @@ function persistMode() {
 
 // 表示モードとモバイル全画面表示
 function setMode(mode, { manual = false, focus = false } = {}) {
-  if (!isViewMode(mode)) {
+  if (!isViewMode(mode) || !availableViewModes.has(mode)) {
     return;
   }
 

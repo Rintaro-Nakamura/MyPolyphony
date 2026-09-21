@@ -70,6 +70,35 @@ function embedScripts(html, { sources, lineEnding }) {
   return html.replace(pattern, () => replacement);
 }
 
+function markChatModeAsComingSoon(html, lineEnding) {
+  const pattern = /<!-- my-polyphony-chat-mode:start -->[\s\S]*?<!-- my-polyphony-chat-mode:end -->/i;
+  const match = html.match(pattern);
+
+  if (!match) {
+    throw new Error("dev.html にチャットモードの配布時置換範囲が見つかりません。");
+  }
+
+  const tagLineStart = html.lastIndexOf(lineEnding, match.index) + lineEnding.length;
+  const indentation = html.slice(tagLineStart, match.index);
+  const replacement = [
+    '<span class="mode-option mode-option--unavailable">',
+    '  <button',
+    '    class="mode-button"',
+    '    type="button"',
+    '    data-mode="mobile"',
+    '    aria-pressed="false"',
+    '    aria-disabled="true"',
+    '    aria-describedby="chatComingSoon"',
+    '  >',
+    '    チャット',
+    '  </button>',
+    '  <span id="chatComingSoon" class="mode-option__tooltip" role="tooltip">近日公開予定</span>',
+    '</span>',
+  ].map((line, index) => index === 0 ? line : `${indentation}${line}`).join(lineEnding);
+
+  return html.replace(pattern, () => replacement);
+}
+
 async function readProjectFile(relativePath) {
   return readFile(path.join(projectRoot, relativePath), "utf8");
 }
@@ -84,7 +113,8 @@ async function generateDistributionHtml() {
   const lineEnding = "\n";
   const normalizedDevelopmentHtml = normalizeLineEndings(developmentHtml);
 
-  let generatedHtml = embedStylesheet(normalizedDevelopmentHtml, {
+  let generatedHtml = markChatModeAsComingSoon(normalizedDevelopmentHtml, lineEnding);
+  generatedHtml = embedStylesheet(generatedHtml, {
     href: "./structure.css",
     id: "my-polyphony-structure",
     source: structure,

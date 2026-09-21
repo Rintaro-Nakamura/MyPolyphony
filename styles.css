@@ -144,6 +144,17 @@ textarea {
   border-radius: var(--radius-pill);
 }
 
+.mode-option__tooltip {
+  color: white;
+  background: var(--ink);
+  border-radius: 0.42rem;
+  box-shadow: 0 5px 16px rgba(31, 37, 51, 0.2);
+  font-size: 0.72rem;
+  font-weight: 700;
+  letter-spacing: 0.03em;
+  transition: opacity var(--motion-fast), transform var(--motion-fast), visibility var(--motion-fast);
+}
+
 .mode-button,
 .tool-button {
   border: 0;
@@ -169,6 +180,20 @@ textarea {
   color: white;
   background: var(--ink);
   box-shadow: 0 2px 8px rgba(31, 37, 51, 0.18);
+}
+
+.mode-button[aria-disabled="true"] {
+  color: var(--ink-soft);
+  background: transparent;
+  box-shadow: none;
+  cursor: not-allowed;
+  opacity: 0.58;
+}
+
+.mode-button[aria-disabled="true"]:hover,
+.mode-button[aria-disabled="true"]:active {
+  background: transparent;
+  transform: none;
 }
 
 .tool-button--quiet {

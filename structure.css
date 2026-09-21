@@ -97,6 +97,31 @@ body {
   margin-right: 0.35rem;
 }
 
+.mode-option {
+  position: relative;
+  display: inline-flex;
+}
+
+.mode-option__tooltip {
+  position: absolute;
+  top: calc(100% + 0.5rem);
+  left: 50%;
+  z-index: 20;
+  width: max-content;
+  padding: 0.38rem 0.58rem;
+  pointer-events: none;
+  visibility: hidden;
+  opacity: 0;
+  transform: translate(-50%, -0.2rem);
+}
+
+.mode-option--unavailable:hover .mode-option__tooltip,
+.mode-option--unavailable:focus-within .mode-option__tooltip {
+  visibility: visible;
+  opacity: 1;
+  transform: translate(-50%, 0);
+}
+
 .mode-button,
 .tool-button {
   min-height: 38px;
