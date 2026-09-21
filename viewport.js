@@ -36,27 +36,6 @@ function calculateRevealDelta(targetBottom, viewportBottom, bottomInset = 0) {
   return Math.max(0, targetBottom + bottomInset - viewportBottom);
 }
 
-function isAtViewportBottom({
-  targetBottom,
-  viewportBottom,
-  bottomInset = 0,
-  tolerance = 1,
-}) {
-  for (const value of [
-    targetBottom,
-    viewportBottom,
-    bottomInset,
-    tolerance,
-  ]) {
-    if (!Number.isFinite(value)) {
-      throw new TypeError("入力欄の基準位置が正しくありません。");
-    }
-  }
-
-  const anchoredBottom = viewportBottom - bottomInset;
-  return Math.abs(targetBottom - anchoredBottom) <= tolerance;
-}
-
 function calculateCaretRevealDelta({
   caretTop,
   caretBottom,
@@ -171,7 +150,6 @@ globalThis.MyPolyphonyViewport = Object.freeze({
   FOLLOW_INPUT_VIEWPORT_POLICY,
   DESKTOP_CARET_VIEWPORT_POLICY,
   calculateRevealDelta,
-  isAtViewportBottom,
   calculateCaretRevealDelta,
   applyAfterCommitScroll,
   focusDraftInput,

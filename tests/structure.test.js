@@ -53,7 +53,7 @@ test("文書表示の主要な操作要素を備えている", async () => {
   assert.doesNotMatch(html, /<button[^>]*>発言を置く<\/button>/);
 });
 
-test("文書表示は下端到達後に発言領域だけを送り、入力欄を固定配置にはしない", async () => {
+test("文書表示は入力欄全体が見える位置まで必要な分だけ追従する", async () => {
   const app = await readProjectFile("app.js");
   const css = await readProjectFile("structure.css");
 
@@ -64,12 +64,6 @@ test("文書表示は下端到達後に発言領域だけを送り、入力欄�
   assert.match(
     app,
     /input: viewMode === "mobile" \? elements\.mobileDraft : elements\.desktopComposer/,
-  );
-  assert.match(app, /const scrollDesktopMessages = lockDesktopMessagesIfAtBottom\(source\);/);
-  assert.match(app, /elements\.desktopMessages\.scrollTop = elements\.desktopMessages\.scrollHeight/);
-  assert.match(
-    css,
-    /\.desktop-messages--viewport\s*\{[\s\S]*?height:[\s\S]*?overflow-y:\s*auto/,
   );
   assert.doesNotMatch(css, /\.desktop-composer--pinned/);
   assert.doesNotMatch(app, /position:\s*fixed|hasReachedViewportBottom|pinDesktopComposer/);

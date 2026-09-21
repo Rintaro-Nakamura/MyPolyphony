@@ -12,7 +12,6 @@ const {
   calculateCaretRevealDelta,
   calculateRevealDelta,
   focusDraftInput,
-  isAtViewportBottom,
   revealCaretLine,
 } = globalThis.MyPolyphonyViewport;
 
@@ -20,24 +19,6 @@ test("入力位置が表示範囲を越えた分だけスクロール量を求�
   assert.equal(calculateRevealDelta(700, 800, 32), 0);
   assert.equal(calculateRevealDelta(790, 800, 32), 22);
   assert.equal(calculateRevealDelta(860, 800, 32), 92);
-});
-
-test("入力欄が画面下端の基準位置にあるかを判定する", () => {
-  assert.equal(isAtViewportBottom({
-    targetBottom: 666,
-    viewportBottom: 720,
-    bottomInset: 32,
-  }), false);
-  assert.equal(isAtViewportBottom({
-    targetBottom: 687.75,
-    viewportBottom: 720,
-    bottomInset: 32,
-  }), true);
-  assert.equal(isAtViewportBottom({
-    targetBottom: 1106,
-    viewportBottom: 720,
-    bottomInset: 32,
-  }), false);
 });
 
 test("キャレット行が表示領域を越えた方向へ必要な分だけ追従する", () => {
