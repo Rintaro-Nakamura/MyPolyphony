@@ -59,7 +59,6 @@ const {
   DESKTOP_CARET_VIEWPORT_POLICY,
   FOLLOW_INPUT_VIEWPORT_POLICY,
   applyAfterCommitScroll,
-  calculateSharedComposerTravel,
   focusDraftInput,
   isAtViewportBottom,
   revealCaretLine,
@@ -85,8 +84,6 @@ const desktopInteractionPolicy = DIALOGUE_ENTER_INTERACTION_POLICY;
 const mobileInteractionPolicy = DIALOGUE_ENTER_INTERACTION_POLICY;
 const desktopViewportPolicy = FOLLOW_INPUT_VIEWPORT_POLICY;
 const mobileViewportPolicy = CHAT_MOBILE_VIEWPORT_POLICY;
-const desktopComposerMotionShare = 0.1;
-const desktopComposerMinimumBottomInset = 20;
 
 // アプリの一時状態。保存される対話データの形は model.js が定義する。
 const mobileMedia = window.matchMedia("(max-width: 767px)");
@@ -481,40 +478,14 @@ function handleRoleShortcut(event) {
   handleRoleToggle();
 }
 
-function applyDesktopMessageMotion(previousScrollHeight) {
-  const messages = elements.desktopMessages;
-  const contentGrowth = Math.max(0, messages.scrollHeight - previousScrollHeight);
-  const currentHeight = messages.getBoundingClientRect().height;
-  const composerBottom = elements.desktopComposer.getBoundingClientRect().bottom;
-  const availableTravel =
-    window.innerHeight - desktopComposerMinimumBottomInset - composerBottom;
-  const composerTravel = calculateSharedComposerTravel({
-    contentGrowth,
-    availableTravel,
-    composerShare: desktopComposerMotionShare,
-  });
-
-  if (composerTravel > 0) {
-    messages.style.setProperty(
-      "--desktop-messages-viewport-height",
-      `${currentHeight + composerTravel}px`,
-    );
-  }
-  messages.scrollTop = messages.scrollHeight;
-}
-
-function renderAll({
-  focus = false,
-  scroll = false,
-  desktopMessagesPreviousScrollHeight = null,
-} = {}) {
+function renderAll({ focus = false, scroll = false, scrollDesktopMessages = false } = {}) {
   renderNoteHeader();
   renderMessages();
   renderComposer();
   setMode(viewMode);
 
-  if (Number.isFinite(desktopMessagesPreviousScrollHeight)) {
-    applyDesktopMessageMotion(desktopMessagesPreviousScrollHeight);
+  if (scrollDesktopMessages) {
+    elements.desktopMessages.scrollTop = elements.desktopMessages.scrollHeight;
   }
 
   if (scroll) {
@@ -546,12 +517,12 @@ function handleDraftInput(event) {
   schedulePersist();
 }
 
-function prepareDesktopMessagesForCommit(source) {
+function lockDesktopMessagesIfAtBottom(source) {
   if (viewMode !== "desktop" || source !== elements.desktopDraft) {
-    return null;
+    return false;
   }
   if (elements.desktopMessages.classList.contains("desktop-messages--viewport")) {
-    return elements.desktopMessages.scrollHeight;
+    return true;
   }
 
   const composerRect = elements.desktopComposer.getBoundingClientRect();
@@ -560,7 +531,7 @@ function prepareDesktopMessagesForCommit(source) {
     viewportBottom: window.innerHeight,
     bottomInset: desktopViewportPolicy.bottomInset ?? 0,
   })) {
-    return null;
+    return false;
   }
 
   const messagesHeight = elements.desktopMessages.getBoundingClientRect().height;
@@ -569,7 +540,7 @@ function prepareDesktopMessagesForCommit(source) {
     `${messagesHeight}px`,
   );
   elements.desktopMessages.classList.add("desktop-messages--viewport");
-  return elements.desktopMessages.scrollHeight;
+  return true;
 }
 
 function unlockDesktopMessages() {
@@ -586,7 +557,7 @@ function commitCurrentDraft(source, command = COMMAND_COMMIT) {
     return;
   }
 
-  const desktopMessagesPreviousScrollHeight = prepareDesktopMessagesForCommit(source);
+  const scrollDesktopMessages = lockDesktopMessagesIfAtBottom(source);
   const committedRole = state.nextRole;
   const interactionPolicy = interactionPolicyForSource(source);
   state = commitDraft(state);
@@ -597,8 +568,8 @@ function commitCurrentDraft(source, command = COMMAND_COMMIT) {
   persistNow();
   renderAll({
     focus: true,
-    scroll: !Number.isFinite(desktopMessagesPreviousScrollHeight),
-    desktopMessagesPreviousScrollHeight,
+    scroll: !scrollDesktopMessages,
+    scrollDesktopMessages,
   });
   announce(`${roleLabel(committedRole)}の発言を追加しました。次は${roleLabel(state.nextRole)}です。`);
 }

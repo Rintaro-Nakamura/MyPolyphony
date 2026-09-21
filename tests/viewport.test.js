@@ -11,7 +11,6 @@ const {
   applyAfterCommitScroll,
   calculateCaretRevealDelta,
   calculateRevealDelta,
-  calculateSharedComposerTravel,
   focusDraftInput,
   isAtViewportBottom,
   revealCaretLine,
@@ -39,24 +38,6 @@ test("入力欄が画面下端の基準位置にあるかを判定する", () =>
     viewportBottom: 720,
     bottomInset: 32,
   }), false);
-});
-
-test("追加された発言の一部だけを入力欄の下向き移動へ配分する", () => {
-  assert.equal(calculateSharedComposerTravel({
-    contentGrowth: 70,
-    availableTravel: 20,
-    composerShare: 0.1,
-  }), 7);
-  assert.equal(calculateSharedComposerTravel({
-    contentGrowth: 70,
-    availableTravel: 4,
-    composerShare: 0.1,
-  }), 4);
-  assert.equal(calculateSharedComposerTravel({
-    contentGrowth: 70,
-    availableTravel: -5,
-    composerShare: 0.1,
-  }), 0);
 });
 
 test("キャレット行が表示領域を越えた方向へ必要な分だけ追従する", () => {
