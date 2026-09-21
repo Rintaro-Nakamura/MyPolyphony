@@ -1,6 +1,7 @@
 (() => {
 const {
   COMMAND_COMMIT,
+  COMMAND_COMMIT_PRESERVE_ROLE,
   COMMAND_NONE,
   COMMAND_SWITCH_ROLE,
   desktopCommandForKey,
@@ -13,12 +14,12 @@ function executeEditorCommand(command, event, { source, onCommit, onSwitchRole }
   }
 
   event.preventDefault();
-  if (command === COMMAND_COMMIT) {
-    onCommit(source);
+  if (command === COMMAND_COMMIT || command === COMMAND_COMMIT_PRESERVE_ROLE) {
+    onCommit(source, command);
     return true;
   }
   if (command === COMMAND_SWITCH_ROLE) {
-    onSwitchRole();
+    onSwitchRole({ source, preserveSelection: true });
     return true;
   }
 
@@ -45,12 +46,14 @@ function bindDesktopEditor({
   };
   const handleSubmit = (event) => {
     event.preventDefault();
-    onCommit(draftInput);
+    onCommit(draftInput, COMMAND_COMMIT);
   };
 
   draftInput.addEventListener("input", onDraftInput);
   draftInput.addEventListener("keydown", handleKeydown);
-  roleButton.addEventListener("click", onSwitchRole);
+  roleButton.addEventListener("click", () => {
+    onSwitchRole({ source: draftInput, preserveSelection: false });
+  });
   composer.addEventListener("submit", handleSubmit);
 }
 
@@ -73,12 +76,14 @@ function bindMobileEditor({
   };
   const handleSubmit = (event) => {
     event.preventDefault();
-    onCommit(draftInput);
+    onCommit(draftInput, COMMAND_COMMIT);
   };
 
   draftInput.addEventListener("input", onDraftInput);
   draftInput.addEventListener("keydown", handleKeydown);
-  roleButton.addEventListener("click", onSwitchRole);
+  roleButton.addEventListener("click", () => {
+    onSwitchRole({ source: draftInput, preserveSelection: false });
+  });
   composer.addEventListener("submit", handleSubmit);
 }
 
