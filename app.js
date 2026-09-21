@@ -57,7 +57,7 @@ const { createDesktopCaretNavigation } = globalThis.MyPolyphonyCaretNavigation;
 const {
   CHAT_MOBILE_VIEWPORT_POLICY,
   DESKTOP_CARET_VIEWPORT_POLICY,
-  STATIC_DESKTOP_VIEWPORT_POLICY,
+  FOLLOW_INPUT_VIEWPORT_POLICY,
   applyAfterCommitScroll,
   focusDraftInput,
   revealCaretLine,
@@ -81,7 +81,7 @@ const desktopCaretNavigation = createDesktopCaretNavigation({
 // 各表示で採用する操作方針。共有データを変えず、表示ごとに別方針へ交換できる。
 const desktopInteractionPolicy = DIALOGUE_ENTER_INTERACTION_POLICY;
 const mobileInteractionPolicy = DIALOGUE_ENTER_INTERACTION_POLICY;
-const desktopViewportPolicy = STATIC_DESKTOP_VIEWPORT_POLICY;
+const desktopViewportPolicy = FOLLOW_INPUT_VIEWPORT_POLICY;
 const mobileViewportPolicy = CHAT_MOBILE_VIEWPORT_POLICY;
 
 // アプリの一時状態。保存される対話データの形は model.js が定義する。
@@ -488,7 +488,7 @@ function renderAll({ focus = false, scroll = false } = {}) {
       applyAfterCommitScroll({
         policy: viewportPolicyForMode(),
         feed: viewMode === "mobile" ? elements.mobileFeed : null,
-        input: viewMode === "mobile" ? elements.mobileDraft : elements.desktopDraft,
+        input: viewMode === "mobile" ? elements.mobileDraft : elements.desktopComposer,
         windowObject: window,
       });
     });

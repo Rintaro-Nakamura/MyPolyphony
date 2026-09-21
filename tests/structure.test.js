@@ -53,6 +53,22 @@ test("文書表示の主要な操作要素を備えている", async () => {
   assert.doesNotMatch(html, /<button[^>]*>発言を置く<\/button>/);
 });
 
+test("文書表示は入力欄全体が見える位置まで必要な分だけ追従する", async () => {
+  const app = await readProjectFile("app.js");
+  const css = await readProjectFile("structure.css");
+
+  assert.match(
+    app,
+    /const desktopViewportPolicy = FOLLOW_INPUT_VIEWPORT_POLICY;/,
+  );
+  assert.match(
+    app,
+    /input: viewMode === "mobile" \? elements\.mobileDraft : elements\.desktopComposer/,
+  );
+  assert.doesNotMatch(css, /\.desktop-composer--pinned/);
+  assert.doesNotMatch(app, /position:\s*fixed|hasReachedViewportBottom|pinDesktopComposer/);
+});
+
 test("設定に対話篇の入出力と書体選択をまとめている", async () => {
   const html = await readProjectFile("dev.html");
   const settingsStart = html.indexOf('id="settingsMenu"');
