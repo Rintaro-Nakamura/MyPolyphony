@@ -60,6 +60,7 @@ const {
   FOLLOW_INPUT_VIEWPORT_POLICY,
   applyAfterCommitScroll,
   focusDraftInput,
+  isAtViewportBottom,
   revealCaretLine,
 } = globalThis.MyPolyphonyViewport;
 
@@ -477,11 +478,15 @@ function handleRoleShortcut(event) {
   handleRoleToggle();
 }
 
-function renderAll({ focus = false, scroll = false } = {}) {
+function renderAll({ focus = false, scroll = false, scrollDesktopMessages = false } = {}) {
   renderNoteHeader();
   renderMessages();
   renderComposer();
   setMode(viewMode);
+
+  if (scrollDesktopMessages) {
+    elements.desktopMessages.scrollTop = elements.desktopMessages.scrollHeight;
+  }
 
   if (scroll) {
     window.requestAnimationFrame(() => {
@@ -512,6 +517,37 @@ function handleDraftInput(event) {
   schedulePersist();
 }
 
+function lockDesktopMessagesIfAtBottom(source) {
+  if (viewMode !== "desktop" || source !== elements.desktopDraft) {
+    return false;
+  }
+  if (elements.desktopMessages.classList.contains("desktop-messages--viewport")) {
+    return true;
+  }
+
+  const composerRect = elements.desktopComposer.getBoundingClientRect();
+  if (!isAtViewportBottom({
+    targetBottom: composerRect.bottom,
+    viewportBottom: window.innerHeight,
+    bottomInset: desktopViewportPolicy.bottomInset ?? 0,
+  })) {
+    return false;
+  }
+
+  const messagesHeight = elements.desktopMessages.getBoundingClientRect().height;
+  elements.desktopMessages.style.setProperty(
+    "--desktop-messages-viewport-height",
+    `${messagesHeight}px`,
+  );
+  elements.desktopMessages.classList.add("desktop-messages--viewport");
+  return true;
+}
+
+function unlockDesktopMessages() {
+  elements.desktopMessages.classList.remove("desktop-messages--viewport");
+  elements.desktopMessages.style.removeProperty("--desktop-messages-viewport-height");
+}
+
 function commitCurrentDraft(source, command = COMMAND_COMMIT) {
   state = updateDraft(state, source.value);
   if (state.draft.trim().length === 0) {
@@ -521,6 +557,7 @@ function commitCurrentDraft(source, command = COMMAND_COMMIT) {
     return;
   }
 
+  const scrollDesktopMessages = lockDesktopMessagesIfAtBottom(source);
   const committedRole = state.nextRole;
   const interactionPolicy = interactionPolicyForSource(source);
   state = commitDraft(state);
@@ -529,7 +566,11 @@ function commitCurrentDraft(source, command = COMMAND_COMMIT) {
     roleAfterCommit(committedRole, interactionPolicy, command),
   );
   persistNow();
-  renderAll({ focus: true, scroll: true });
+  renderAll({
+    focus: true,
+    scroll: !scrollDesktopMessages,
+    scrollDesktopMessages,
+  });
   announce(`${roleLabel(committedRole)}の発言を追加しました。次は${roleLabel(state.nextRole)}です。`);
 }
 
@@ -844,6 +885,7 @@ function loadDialogueSource(
     return false;
   }
 
+  unlockDesktopMessages();
   state = imported;
   storageWriteBlocked = false;
   dismissNotice();
@@ -903,6 +945,7 @@ function resetDialogue() {
     return;
   }
 
+  unlockDesktopMessages();
   state = createInitialState();
   storageWriteBlocked = false;
   dismissNotice();

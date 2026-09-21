@@ -5,6 +5,7 @@
   --desktop-self-to-self-gap: 0.8rem;
   --desktop-message-padding-block: 0.8rem;
   --desktop-message-min-height: 3.3rem;
+  --desktop-messages-viewport-height: auto;
 }
 
 *,
@@ -299,6 +300,18 @@ body {
 .desktop-messages {
   display: grid;
   gap: 0;
+}
+
+.desktop-messages--viewport {
+  height: var(--desktop-messages-viewport-height);
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  scrollbar-width: none;
+}
+
+.desktop-messages--viewport::-webkit-scrollbar {
+  width: 0;
+  height: 0;
 }
 
 .desktop-message + .desktop-message {
