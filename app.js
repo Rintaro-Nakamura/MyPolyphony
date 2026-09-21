@@ -53,6 +53,7 @@ const {
   roleAfterImport,
 } = globalThis.MyPolyphonyInteraction;
 const { bindDesktopEditor, bindMobileEditor } = globalThis.MyPolyphonyEditors;
+const { createDesktopCaretNavigation } = globalThis.MyPolyphonyCaretNavigation;
 const {
   CHAT_MOBILE_VIEWPORT_POLICY,
   STATIC_DESKTOP_VIEWPORT_POLICY,
@@ -61,6 +62,10 @@ const {
 } = globalThis.MyPolyphonyViewport;
 
 const elements = collectElements(document);
+const desktopCaretNavigation = createDesktopCaretNavigation({
+  messagesContainer: elements.desktopMessages,
+  draftInput: elements.desktopDraft,
+});
 
 // 各表示で採用する操作方針。共有データを変えず、表示ごとに別方針へ交換できる。
 const desktopInteractionPolicy = DIALOGUE_ENTER_INTERACTION_POLICY;
@@ -490,6 +495,7 @@ function focusComposer() {
 
 // 対話篇の編集操作
 function handleDraftInput(event) {
+  desktopCaretNavigation.reset();
   state = updateDraft(state, event.currentTarget.value);
   syncDraftInputs(event.currentTarget);
   schedulePersist();
@@ -612,6 +618,7 @@ function updateMobileMessageText(id, text) {
 }
 
 function handleInlineMessageClick(event) {
+  desktopCaretNavigation.reset();
   if (inlineEditorFromEvent(event)) {
     return;
   }
@@ -635,6 +642,7 @@ function handleInlineMessageInput(event) {
     return;
   }
 
+  desktopCaretNavigation.reset();
   const selected = selectionOffsets(editor);
   const rawText = editor.textContent ?? "";
   const text = rawText.replace(/[\r\n]+/g, "");
@@ -653,6 +661,10 @@ function handleInlineMessageInput(event) {
 function handleInlineMessageKeydown(event) {
   const editor = inlineEditorFromEvent(event);
   if (!editor || event.defaultPrevented || event.isComposing || event.keyCode === 229) {
+    return;
+  }
+
+  if (desktopCaretNavigation.handleKeydown(event)) {
     return;
   }
 
@@ -922,6 +934,12 @@ function bindEvents() {
       setMode(event.matches ? "mobile" : "desktop");
     }
   });
+
+  elements.desktopDraft.addEventListener(
+    "keydown",
+    desktopCaretNavigation.handleKeydown,
+  );
+  elements.desktopDraft.addEventListener("pointerdown", desktopCaretNavigation.reset);
 
   bindDesktopEditor({
     composer: elements.desktopComposer,

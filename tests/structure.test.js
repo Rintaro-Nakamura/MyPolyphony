@@ -15,6 +15,7 @@ test("dev.htmlは構造層、装飾層、役割別JavaScriptを開発元とし�
     "./view.js",
     "./interaction.js",
     "./editors.js",
+    "./caret-navigation.js",
     "./viewport.js",
     "./app.js",
   ];
