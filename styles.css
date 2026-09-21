@@ -401,10 +401,35 @@ textarea {
 }
 
 .desktop-message__number {
+  position: relative;
   color: #99958b;
   font-size: 0.62rem;
   font-weight: 800;
   text-align: center;
+  transition: color var(--motion-fast);
+}
+
+.desktop-message__number::after {
+  position: absolute;
+  top: 1.18rem;
+  left: 50%;
+  width: 0.3rem;
+  height: 0.3rem;
+  border-radius: 50%;
+  background: var(--ink-soft);
+  content: "";
+  opacity: 0;
+  transform: translateX(-50%) scale(0.75);
+  transition: opacity var(--motion-fast), transform var(--motion-fast);
+}
+
+.desktop-message:focus-within .desktop-message__number {
+  color: var(--ink);
+}
+
+.desktop-message:focus-within .desktop-message__number::after {
+  opacity: 0.72;
+  transform: translateX(-50%) scale(1);
 }
 
 .desktop-message__content {
