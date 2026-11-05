@@ -15,10 +15,6 @@
   --voice-dark: #3f468f;
   --voice-pale: #eceefe;
   --voice-paper-overlay: rgba(236, 238, 254, 0.45);
-  --composer-self-line: rgba(95, 86, 71, 0.32);
-  --composer-self-line-active: rgba(95, 86, 71, 0.56);
-  --composer-other-line: rgba(92, 100, 199, 0.38);
-  --composer-other-line-active: rgba(92, 100, 199, 0.62);
   --self-pale: #fff8e8;
   --success: #337660;
   --danger: #b53d3d;
@@ -502,44 +498,41 @@ textarea {
 }
 
 .desktop-composer {
-  border: 1px solid var(--composer-self-line);
+  border: 2px solid var(--ink);
   border-radius: 0.5rem;
-  background: transparent;
+  background: rgba(255, 255, 255, 0.82);
   transition: border-color var(--motion-fast),
-    box-shadow var(--motion-fast);
+    box-shadow var(--motion-fast),
+    background var(--motion-fast);
 }
 
 .desktop-composer[data-role="other"] {
-  border-color: var(--composer-other-line);
+  border-color: var(--voice);
+  background: rgba(236, 238, 254, 0.72);
 }
 
 .desktop-composer:focus-within {
-  border-color: var(--composer-self-line-active);
-  box-shadow: 0 0 0 3px rgba(95, 86, 71, 0.055);
+  box-shadow: 0 0 0 5px rgba(221, 103, 66, 0.11);
 }
 
 .desktop-composer[data-role="other"]:focus-within {
-  border-color: var(--composer-other-line-active);
-  box-shadow: 0 0 0 3px rgba(92, 100, 199, 0.065);
+  box-shadow: 0 0 0 5px rgba(92, 100, 199, 0.12);
 }
 
 .role-tag {
-  color: #77736b;
-  border: 1px solid var(--composer-self-line);
-  background: var(--paper);
+  color: white;
+  border: 0;
+  background: var(--ink);
   border-radius: var(--radius-pill);
   font-size: 0.65rem;
-  font-weight: 700;
+  font-weight: 800;
   letter-spacing: 0.04em;
   cursor: pointer;
-  transition: color var(--motion-fast),
-    border-color var(--motion-fast),
-    transform var(--motion-fast);
+  transition: filter var(--motion-fast), transform var(--motion-fast);
 }
 
 .role-tag:hover {
-  color: var(--ink-soft);
-  border-color: var(--composer-self-line-active);
+  filter: brightness(1.14);
 }
 
 .role-tag:active {
@@ -547,25 +540,13 @@ textarea {
 }
 
 .desktop-composer[data-role="other"] .role-tag {
-  color: #686da8;
-  border-color: var(--composer-other-line);
-  background: var(--paper);
-}
-
-.desktop-composer[data-role="other"] .role-tag:hover {
-  color: var(--voice-dark);
-  border-color: var(--composer-other-line-active);
+  background: var(--voice);
 }
 
 .quote-input__mark {
-  color: #8b887f;
   font-family: var(--font-dialogue);
   font-size: 1.65rem;
   line-height: 1.6;
-}
-
-.desktop-composer[data-role="other"] .quote-input__mark {
-  color: rgba(92, 100, 199, 0.68);
 }
 
 .quote-input textarea {
