@@ -500,7 +500,7 @@ textarea {
 .desktop-composer {
   border: 2px solid var(--ink);
   border-radius: 0.5rem;
-  background: rgba(255, 255, 255, 0.82);
+  background: transparent;
   transition: border-color var(--motion-fast),
     box-shadow var(--motion-fast),
     background var(--motion-fast);
@@ -508,7 +508,7 @@ textarea {
 
 .desktop-composer[data-role="other"] {
   border-color: var(--voice);
-  background: rgba(236, 238, 254, 0.72);
+  background: transparent;
 }
 
 .desktop-composer:focus-within {
