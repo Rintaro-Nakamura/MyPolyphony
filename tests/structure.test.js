@@ -161,6 +161,23 @@ test("紙面上の相手の発言は半透明の色越しに紙面を見せる",
   );
 });
 
+test("文書表示の入力位置は紙面を透かす淡い枠として示す", async () => {
+  const css = await readProjectFile("styles.css");
+
+  assert.match(
+    css,
+    /\.desktop-composer\s*\{[\s\S]*?border:\s*1px solid var\(--composer-self-line\)[\s\S]*?background:\s*transparent/,
+  );
+  assert.match(
+    css,
+    /\.role-tag\s*\{[\s\S]*?color:\s*#77736b[\s\S]*?border:\s*1px solid var\(--composer-self-line\)[\s\S]*?background:\s*var\(--paper\)/,
+  );
+  assert.match(
+    css,
+    /\.desktop-composer\[data-role="other"\]\s*\{[\s\S]*?border-color:\s*var\(--composer-other-line\)/,
+  );
+});
+
 test("仕様の具体例を開発画面から読み込める", async () => {
   const html = await readProjectFile("dev.html");
   const exampleScript = html.match(
