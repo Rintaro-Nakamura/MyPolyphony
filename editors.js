@@ -38,7 +38,6 @@ function executeEditorCommand(
 function bindDesktopEditor({
   composer,
   draftInput,
-  roleButton,
   getDraft,
   interactionPolicy,
   getInteractionPolicy,
@@ -64,9 +63,6 @@ function bindDesktopEditor({
 
   draftInput.addEventListener("input", onDraftInput);
   draftInput.addEventListener("keydown", handleKeydown);
-  roleButton.addEventListener("click", () => {
-    onSwitchRole({ source: draftInput, preserveSelection: false });
-  });
   composer.addEventListener("submit", handleSubmit);
 }
 

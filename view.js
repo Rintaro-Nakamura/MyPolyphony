@@ -23,7 +23,6 @@ function collectElements(root) {
     desktopDraft: root.querySelector("#desktopDraft"),
     desktopHintAlternate: root.querySelector("#desktopHintAlternate"),
     desktopHintPreserve: root.querySelector("#desktopHintPreserve"),
-    desktopRoleLabel: root.querySelector("#desktopRoleLabel"),
     dialogueStartedAt: root.querySelector("#dialogueStartedAt"),
     mobileView: root.querySelector("#mobileView"),
     mobileFeed: root.querySelector("#mobileFeed"),
@@ -60,8 +59,9 @@ function renderRoleButton(button, role, { compact = false } = {}) {
   button.title = `クリックで「次は${alternateLabel}」に切り替え`;
 }
 
-function renderDesktopComposer({ composer, roleButton }, role, previousRole = null) {
-  renderRoleButton(roleButton, role);
+function renderDesktopComposer({ composer, draftInput }, role, previousRole = null) {
+  const label = roleLabel(role);
+  draftInput.placeholder = `ここに『${label}』の言葉を置く`;
   composer.dataset.role = role;
   if (previousRole === "self" || previousRole === "other") {
     composer.dataset.previousRole = previousRole;

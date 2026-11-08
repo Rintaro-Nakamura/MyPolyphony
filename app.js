@@ -503,7 +503,7 @@ function renderComposer() {
   renderDesktopComposer(
     {
       composer: elements.desktopComposer,
-      roleButton: elements.desktopRoleLabel,
+      draftInput: elements.desktopDraft,
     },
     state.nextRole,
     state.messages.at(-1)?.role ?? null,
@@ -1038,7 +1038,6 @@ function bindEvents() {
   bindDesktopEditor({
     composer: elements.desktopComposer,
     draftInput: elements.desktopDraft,
-    roleButton: elements.desktopRoleLabel,
     getDraft: () => state.draft,
     getInteractionPolicy: () => interactionPolicyForMode("desktop"),
     onDraftInput: handleDraftInput,

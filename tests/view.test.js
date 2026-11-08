@@ -57,17 +57,16 @@ function roleButton() {
 
 test("文書表示とチャット表示はそれぞれの話者表示を描画する", () => {
   const desktopComposer = { dataset: {} };
-  const desktopRoleButton = roleButton();
+  const desktopDraft = { placeholder: "" };
   renderDesktopComposer(
-    { composer: desktopComposer, roleButton: desktopRoleButton },
+    { composer: desktopComposer, draftInput: desktopDraft },
     "other",
     "self",
   );
 
   assert.equal(desktopComposer.dataset.role, "other");
   assert.equal(desktopComposer.dataset.previousRole, "self");
-  assert.equal(desktopRoleButton.textContent, "次は 相手");
-  assert.match(desktopRoleButton.attributes["aria-label"], /クリックすると自分/);
+  assert.equal(desktopDraft.placeholder, "ここに『相手』の言葉を置く");
 
   const mobileComposer = { dataset: {} };
   const mobileRoleButton = roleButton();

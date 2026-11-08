@@ -47,14 +47,12 @@ function keyEvent(key, overrides = {}) {
 test("PC版エディタはキー解釈とアプリ操作を接続する", () => {
   const composer = eventTarget();
   const draftInput = eventTarget();
-  const roleButton = eventTarget();
   const calls = [];
   let draft = "発言";
 
   bindDesktopEditor({
     composer,
     draftInput,
-    roleButton,
     getDraft: () => draft,
     interactionPolicy: MANUAL_SWITCH_INTERACTION_POLICY,
     onDraftInput: () => calls.push("input"),
@@ -72,9 +70,6 @@ test("PC版エディタはキー解釈とアプリ操作を接続する", () => 
   const tab = keyEvent("Tab");
   draftInput.listeners.get("keydown")(tab);
   assert.equal(tab.prevented, true);
-  assert.equal(calls.at(-1), "switch");
-
-  roleButton.listeners.get("click")();
   assert.equal(calls.at(-1), "switch");
 
   const backspace = keyEvent("Backspace");
@@ -115,13 +110,11 @@ test("PC版とスマートフォン版はそれぞれの確定キーを解釈す
 test("対話入力方針の命令を確定処理と話者切替へ渡す", () => {
   const composer = eventTarget();
   const draftInput = eventTarget();
-  const roleButton = eventTarget();
   const calls = [];
 
   bindDesktopEditor({
     composer,
     draftInput,
-    roleButton,
     getDraft: () => "書きかけ",
     interactionPolicy: DIALOGUE_ENTER_INTERACTION_POLICY,
     onDraftInput: () => {},
@@ -152,12 +145,6 @@ test("対話入力方針の命令を確定処理と話者切替へ渡す", () =>
     { source: draftInput, preserveSelection: true },
   ]);
 
-  roleButton.listeners.get("click")();
-  assert.deepEqual(calls.at(-1), [
-    "switch",
-    { source: draftInput, preserveSelection: false },
-  ]);
-
   composer.listeners.get("submit")(keyEvent("submit"));
   assert.deepEqual(calls.at(-1), ["commit", draftInput, COMMAND_COMMIT]);
 });
@@ -165,14 +152,12 @@ test("対話入力方針の命令を確定処理と話者切替へ渡す", () =>
 test("PC版エディタは接続後に変更されたEnterの方針を使用する", () => {
   const composer = eventTarget();
   const draftInput = eventTarget();
-  const roleButton = eventTarget();
   const calls = [];
   let interactionPolicy = DIALOGUE_ENTER_INTERACTION_POLICY;
 
   bindDesktopEditor({
     composer,
     draftInput,
-    roleButton,
     getDraft: () => "書きかけ",
     getInteractionPolicy: () => interactionPolicy,
     onDraftInput: () => {},

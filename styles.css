@@ -502,49 +502,32 @@ textarea {
 }
 
 .desktop-composer {
+  --composer-bow-color: var(--ink);
+
   border-color: var(--ink);
   border-radius: 0.5rem;
   background: transparent;
+  box-shadow: inset 4px 0 0 var(--composer-bow-color);
   transition: border-color var(--motion-fast),
     box-shadow var(--motion-fast),
     background var(--motion-fast);
 }
 
 .desktop-composer[data-role="other"] {
+  --composer-bow-color: var(--voice);
+
   border-color: var(--voice);
-  background: transparent;
+  background: var(--voice-paper-overlay);
 }
 
 .desktop-composer:focus-within {
-  box-shadow: 0 0 0 5px rgba(221, 103, 66, 0.11);
+  box-shadow: inset 4px 0 0 var(--composer-bow-color),
+    0 0 0 5px rgba(221, 103, 66, 0.11);
 }
 
 .desktop-composer[data-role="other"]:focus-within {
-  box-shadow: 0 0 0 5px rgba(92, 100, 199, 0.12);
-}
-
-.role-tag {
-  color: white;
-  border: 0;
-  background: var(--ink);
-  border-radius: var(--radius-pill);
-  font-size: 0.65rem;
-  font-weight: 800;
-  letter-spacing: 0.04em;
-  cursor: pointer;
-  transition: filter var(--motion-fast), transform var(--motion-fast);
-}
-
-.role-tag:hover {
-  filter: brightness(1.14);
-}
-
-.role-tag:active {
-  transform: translateY(1px);
-}
-
-.desktop-composer[data-role="other"] .role-tag {
-  background: var(--voice);
+  box-shadow: inset 4px 0 0 var(--composer-bow-color),
+    0 0 0 5px rgba(92, 100, 199, 0.12);
 }
 
 .quote-input {

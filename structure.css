@@ -385,13 +385,6 @@ body {
   margin-top: var(--desktop-self-to-self-gap);
 }
 
-.role-tag {
-  position: absolute;
-  top: -0.75rem;
-  left: 1rem;
-  padding: 0.15rem 0.62rem;
-}
-
 .desktop-message__content,
 .quote-input {
   display: grid;

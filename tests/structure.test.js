@@ -42,10 +42,8 @@ test("文書表示の主要な操作要素を備えている", async () => {
   assert.ok(desktopView >= 0 && composer > desktopView && intro > composer);
   assert.match(html, /id="desktopEmpty"/);
   assert.match(html, /自分の「声」との対話を始めましょう。/);
-  assert.match(
-    html,
-    /<button\s+id="desktopRoleLabel"[\s\S]*?type="button"[\s\S]*?>次は 自分<\/button>/,
-  );
+  assert.match(html, /placeholder="ここに『自分』の言葉を置く"/);
+  assert.doesNotMatch(html, /id="desktopRoleLabel"|class="role-tag"|次は 自分/);
   assert.match(
     html,
     /<button\s+id="mobileRoleLabel"[\s\S]*?type="button"[\s\S]*?>次は自分<\/button>/,
@@ -177,13 +175,34 @@ test("入力中と確定後の文書本文は同じ組版座標を使う", async
   assert.match(app, /state\.messages\.at\(-1\)\?\.role \?\? null/);
 });
 
-test("紙面上の相手の発言は半透明の色越しに紙面を見せる", async () => {
+test("相手の入力中と確定後は同じ半透明色越しに紙面を見せる", async () => {
   const css = await readProjectFile("styles.css");
 
   assert.match(css, /--voice-paper-overlay:\s*rgba\(236,\s*238,\s*254,\s*0\.45\)/);
   assert.match(
     css,
     /\.desktop-message--other\s*\{[\s\S]*?background:\s*var\(--voice-paper-overlay\)/,
+  );
+  assert.match(
+    css,
+    /\.desktop-composer\[data-role="other"\]\s*\{[\s\S]*?background:\s*var\(--voice-paper-overlay\)/,
+  );
+});
+
+test("入力枠の左端は話者色の弓形で現在位置を示す", async () => {
+  const css = await readProjectFile("styles.css");
+
+  assert.match(
+    css,
+    /\.desktop-composer\s*\{[\s\S]*?--composer-bow-color:\s*var\(--ink\)[\s\S]*?box-shadow:\s*inset 4px 0 0 var\(--composer-bow-color\)/,
+  );
+  assert.match(
+    css,
+    /\.desktop-composer\[data-role="other"\]\s*\{[\s\S]*?--composer-bow-color:\s*var\(--voice\)/,
+  );
+  assert.match(
+    css,
+    /\.desktop-composer:focus-within\s*\{[\s\S]*?box-shadow:\s*inset 4px 0 0 var\(--composer-bow-color\)/,
   );
 });
 
