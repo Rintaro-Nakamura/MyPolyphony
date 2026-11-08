@@ -507,10 +507,18 @@ textarea {
 
   border-radius: 0.5rem;
   background: transparent;
-  box-shadow: inset 0 0 0 var(--desktop-composer-frame-width) var(--composer-frame-color),
-    inset 4px 0 0 var(--composer-bow-color);
+  box-shadow: inset 4px 0 0 var(--composer-bow-color);
   transition: box-shadow var(--motion-fast),
     background var(--motion-fast);
+}
+
+.desktop-composer::after {
+  position: absolute;
+  inset: 0;
+  border: var(--desktop-composer-frame-width) solid var(--composer-frame-color);
+  border-radius: inherit;
+  content: "";
+  pointer-events: none;
 }
 
 .desktop-composer[data-role="other"] {
@@ -521,14 +529,12 @@ textarea {
 }
 
 .desktop-composer:focus-within {
-  box-shadow: inset 0 0 0 var(--desktop-composer-frame-width) var(--composer-frame-color),
-    inset 4px 0 0 var(--composer-bow-color),
+  box-shadow: inset 4px 0 0 var(--composer-bow-color),
     0 0 0 5px rgba(221, 103, 66, 0.11);
 }
 
 .desktop-composer[data-role="other"]:focus-within {
-  box-shadow: inset 0 0 0 var(--desktop-composer-frame-width) var(--composer-frame-color),
-    inset 4px 0 0 var(--composer-bow-color),
+  box-shadow: inset 4px 0 0 var(--composer-bow-color),
     0 0 0 5px rgba(92, 100, 199, 0.12);
 }
 

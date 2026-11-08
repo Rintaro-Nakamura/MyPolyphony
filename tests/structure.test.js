@@ -213,7 +213,11 @@ test("入力枠の左端は話者色の弓形で現在位置を示す", async ()
 
   assert.match(
     css,
-    /\.desktop-composer\s*\{[\s\S]*?--composer-bow-color:\s*var\(--ink\)[\s\S]*?--composer-frame-color:\s*var\(--ink\)[\s\S]*?box-shadow:[\s\S]*?inset 4px 0 0 var\(--composer-bow-color\)/,
+    /\.desktop-composer\s*\{[\s\S]*?--composer-bow-color:\s*var\(--ink\)[\s\S]*?--composer-frame-color:\s*var\(--ink\)[\s\S]*?box-shadow:\s*inset 4px 0 0 var\(--composer-bow-color\)/,
+  );
+  assert.match(
+    css,
+    /\.desktop-composer::after\s*\{[\s\S]*?position:\s*absolute[\s\S]*?inset:\s*0[\s\S]*?border:\s*var\(--desktop-composer-frame-width\) solid var\(--composer-frame-color\)[\s\S]*?pointer-events:\s*none/,
   );
   assert.match(
     css,
@@ -221,7 +225,7 @@ test("入力枠の左端は話者色の弓形で現在位置を示す", async ()
   );
   assert.match(
     css,
-    /\.desktop-composer:focus-within\s*\{[\s\S]*?box-shadow:[\s\S]*?inset 4px 0 0 var\(--composer-bow-color\)/,
+    /\.desktop-composer:focus-within\s*\{[\s\S]*?box-shadow:\s*inset 4px 0 0 var\(--composer-bow-color\)/,
   );
 });
 
