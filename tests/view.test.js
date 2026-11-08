@@ -9,6 +9,7 @@ const {
   renderDesktopComposer,
   renderMobileComposer,
   roleLabel,
+  visualLineCount,
 } = globalThis.MyPolyphonyView;
 
 function fakeDocument() {
@@ -42,6 +43,18 @@ test("表示層は話者の内部値を画面上の名称へ変換する", () =>
 test("表示層は対話開始日時を日本語の見出しへ整形する", () => {
   const value = new Date(2026, 7, 29, 9, 5).toISOString();
   assert.equal(formatDialogueStartedAt(value), "8 月 29 日（土）　9 時 05 分");
+});
+
+test("表示上の断片を同じ高さごとにまとめて行数を数える", () => {
+  assert.equal(visualLineCount([
+    { top: 20, width: 80, height: 24 },
+    { top: 20.4, width: 30, height: 24 },
+  ]), 1);
+  assert.equal(visualLineCount([
+    { top: 20, width: 80, height: 24 },
+    { top: 58, width: 50, height: 24 },
+  ]), 2);
+  assert.equal(visualLineCount([]), 1);
 });
 
 function roleButton() {

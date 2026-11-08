@@ -83,6 +83,49 @@ function autoGrow(textarea) {
   textarea.style.height = `${Math.min(textarea.scrollHeight, maximum)}px`;
 }
 
+const SINGLE_LINE_CONTENT_CLASS = "desktop-message__content--single-line";
+
+function visualLineCount(rects) {
+  const lineTops = [];
+
+  for (const rect of rects) {
+    if ((rect.width ?? 0) <= 0 && (rect.height ?? 0) <= 0) {
+      continue;
+    }
+    const tolerance = Math.max(1, (rect.height ?? 0) * 0.25);
+    if (!lineTops.some((top) => Math.abs(top - rect.top) <= tolerance)) {
+      lineTops.push(rect.top);
+    }
+  }
+
+  return Math.max(1, lineTops.length);
+}
+
+function syncDesktopMessageClosingMark(content) {
+  if (!content) {
+    return;
+  }
+
+  content.classList.remove(SINGLE_LINE_CONTENT_CLASS);
+  const editor = content.querySelector(".desktop-message__text");
+  if (!editor || (editor.textContent ?? "").length === 0) {
+    content.classList.add(SINGLE_LINE_CONTENT_CLASS);
+    return;
+  }
+
+  const range = editor.ownerDocument.createRange();
+  range.selectNodeContents(editor);
+  const lineCount = visualLineCount([...range.getClientRects()]);
+  range.detach?.();
+  content.classList.toggle(SINGLE_LINE_CONTENT_CLASS, lineCount === 1);
+}
+
+function syncDesktopMessageClosingMarks(container) {
+  container.querySelectorAll(".desktop-message__content").forEach(
+    syncDesktopMessageClosingMark,
+  );
+}
+
 function createDesktopMessage(message, index, root = globalThis.document) {
   const article = root.createElement("article");
   article.className = `desktop-message desktop-message--${message.role}`;
@@ -151,5 +194,8 @@ globalThis.MyPolyphonyView = Object.freeze({
   renderDesktopComposer,
   renderMobileComposer,
   roleLabel,
+  syncDesktopMessageClosingMark,
+  syncDesktopMessageClosingMarks,
+  visualLineCount,
 });
 })();

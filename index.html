@@ -405,6 +405,10 @@
         gap: 0;
       }
 
+      .desktop-message__content--single-line {
+        grid-template-columns: auto max-content auto minmax(0, 1fr);
+      }
+
       .desktop-message__mark--close,
       .quote-input__mark--close {
         align-self: end;
@@ -2680,6 +2684,49 @@
         textarea.style.height = `${Math.min(textarea.scrollHeight, maximum)}px`;
       }
 
+      const SINGLE_LINE_CONTENT_CLASS = "desktop-message__content--single-line";
+
+      function visualLineCount(rects) {
+        const lineTops = [];
+
+        for (const rect of rects) {
+          if ((rect.width ?? 0) <= 0 && (rect.height ?? 0) <= 0) {
+            continue;
+          }
+          const tolerance = Math.max(1, (rect.height ?? 0) * 0.25);
+          if (!lineTops.some((top) => Math.abs(top - rect.top) <= tolerance)) {
+            lineTops.push(rect.top);
+          }
+        }
+
+        return Math.max(1, lineTops.length);
+      }
+
+      function syncDesktopMessageClosingMark(content) {
+        if (!content) {
+          return;
+        }
+
+        content.classList.remove(SINGLE_LINE_CONTENT_CLASS);
+        const editor = content.querySelector(".desktop-message__text");
+        if (!editor || (editor.textContent ?? "").length === 0) {
+          content.classList.add(SINGLE_LINE_CONTENT_CLASS);
+          return;
+        }
+
+        const range = editor.ownerDocument.createRange();
+        range.selectNodeContents(editor);
+        const lineCount = visualLineCount([...range.getClientRects()]);
+        range.detach?.();
+        content.classList.toggle(SINGLE_LINE_CONTENT_CLASS, lineCount === 1);
+      }
+
+      function syncDesktopMessageClosingMarks(container) {
+        container.querySelectorAll(".desktop-message__content").forEach(
+          syncDesktopMessageClosingMark,
+        );
+      }
+
       function createDesktopMessage(message, index, root = globalThis.document) {
         const article = root.createElement("article");
         article.className = `desktop-message desktop-message--${message.role}`;
@@ -2748,6 +2795,9 @@
         renderDesktopComposer,
         renderMobileComposer,
         roleLabel,
+        syncDesktopMessageClosingMark,
+        syncDesktopMessageClosingMarks,
+        visualLineCount,
       });
       })();
 
@@ -3947,6 +3997,8 @@
         renderDesktopComposer,
         renderMobileComposer,
         roleLabel,
+        syncDesktopMessageClosingMark,
+        syncDesktopMessageClosingMarks,
       } = globalThis.MyPolyphonyView;
       const {
         COMMAND_COMMIT,
@@ -4013,6 +4065,7 @@
       let hasManualMode = false;
       let saveTimer = null;
       let toastTimer = null;
+      let desktopMessageLayoutFrame = null;
       let storageWriteBlocked = false;
       let immersiveMode = "off";
 
@@ -4095,6 +4148,7 @@
 
       function changeFontPreference(event) {
         applyFontPreference(event.currentTarget.value);
+        scheduleDesktopMessageLayoutSync();
         const persisted = persistFontPreference();
         const label = FONT_PREFERENCE_LABELS[fontPreference];
         showToast(persisted ? `書体を${label}に変更しました` : `書体を${label}に変更しました（保存なし）`);
@@ -4378,6 +4432,17 @@
         });
       }
 
+      function scheduleDesktopMessageLayoutSync() {
+        if (desktopMessageLayoutFrame !== null) {
+          return;
+        }
+
+        desktopMessageLayoutFrame = window.requestAnimationFrame(() => {
+          desktopMessageLayoutFrame = null;
+          syncDesktopMessageClosingMarks(elements.desktopMessages);
+        });
+      }
+
       function renderMessages() {
         const desktopFragment = document.createDocumentFragment();
         const mobileFragment = document.createDocumentFragment();
@@ -4388,6 +4453,7 @@
         });
 
         elements.desktopMessages.replaceChildren(desktopFragment);
+        syncDesktopMessageClosingMarks(elements.desktopMessages);
         elements.mobileMessages.replaceChildren(mobileFragment);
         elements.desktopEmpty.hidden = state.messages.length > 0;
         elements.mobileEmpty.hidden = state.messages.length > 0;
@@ -4647,6 +4713,7 @@
         state = editMessage(state, editor.dataset.messageId, text);
         persistNow();
         updateMobileMessageText(editor.dataset.messageId, text);
+        syncDesktopMessageClosingMark(editor.closest(".desktop-message__content"));
       }
 
       function handleInlineMessageKeydown(event) {
@@ -4974,6 +5041,7 @@
 
         document.addEventListener("fullscreenchange", handleFullscreenChange);
         document.addEventListener("fullscreenerror", handleFullscreenError);
+        window.addEventListener("resize", scheduleDesktopMessageLayoutSync);
 
         window.addEventListener("beforeunload", () => {
           if (saveTimer) {

@@ -45,6 +45,8 @@ const {
   renderDesktopComposer,
   renderMobileComposer,
   roleLabel,
+  syncDesktopMessageClosingMark,
+  syncDesktopMessageClosingMarks,
 } = globalThis.MyPolyphonyView;
 const {
   COMMAND_COMMIT,
@@ -111,6 +113,7 @@ let fontPreference = DEFAULT_FONT_PREFERENCE;
 let hasManualMode = false;
 let saveTimer = null;
 let toastTimer = null;
+let desktopMessageLayoutFrame = null;
 let storageWriteBlocked = false;
 let immersiveMode = "off";
 
@@ -193,6 +196,7 @@ function persistFontPreference() {
 
 function changeFontPreference(event) {
   applyFontPreference(event.currentTarget.value);
+  scheduleDesktopMessageLayoutSync();
   const persisted = persistFontPreference();
   const label = FONT_PREFERENCE_LABELS[fontPreference];
   showToast(persisted ? `書体を${label}に変更しました` : `書体を${label}に変更しました（保存なし）`);
@@ -476,6 +480,17 @@ function syncDraftInputs(source = null) {
   });
 }
 
+function scheduleDesktopMessageLayoutSync() {
+  if (desktopMessageLayoutFrame !== null) {
+    return;
+  }
+
+  desktopMessageLayoutFrame = window.requestAnimationFrame(() => {
+    desktopMessageLayoutFrame = null;
+    syncDesktopMessageClosingMarks(elements.desktopMessages);
+  });
+}
+
 function renderMessages() {
   const desktopFragment = document.createDocumentFragment();
   const mobileFragment = document.createDocumentFragment();
@@ -486,6 +501,7 @@ function renderMessages() {
   });
 
   elements.desktopMessages.replaceChildren(desktopFragment);
+  syncDesktopMessageClosingMarks(elements.desktopMessages);
   elements.mobileMessages.replaceChildren(mobileFragment);
   elements.desktopEmpty.hidden = state.messages.length > 0;
   elements.mobileEmpty.hidden = state.messages.length > 0;
@@ -745,6 +761,7 @@ function handleInlineMessageInput(event) {
   state = editMessage(state, editor.dataset.messageId, text);
   persistNow();
   updateMobileMessageText(editor.dataset.messageId, text);
+  syncDesktopMessageClosingMark(editor.closest(".desktop-message__content"));
 }
 
 function handleInlineMessageKeydown(event) {
@@ -1072,6 +1089,7 @@ function bindEvents() {
 
   document.addEventListener("fullscreenchange", handleFullscreenChange);
   document.addEventListener("fullscreenerror", handleFullscreenError);
+  window.addEventListener("resize", scheduleDesktopMessageLayoutSync);
 
   window.addEventListener("beforeunload", () => {
     if (saveTimer) {

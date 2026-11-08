@@ -393,6 +393,10 @@ body {
   gap: 0;
 }
 
+.desktop-message__content--single-line {
+  grid-template-columns: auto max-content auto minmax(0, 1fr);
+}
+
 .desktop-message__mark--close,
 .quote-input__mark--close {
   align-self: end;

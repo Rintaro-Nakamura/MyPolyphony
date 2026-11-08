@@ -175,6 +175,25 @@ test("入力中と確定後の文書本文は同じ組版座標を使う", async
   assert.match(app, /state\.messages\.at\(-1\)\?\.role \?\? null/);
 });
 
+test("確定後の一行発言だけ閉じ括弧を文末へ寄せる", async () => {
+  const [css, view, app] = await Promise.all([
+    readProjectFile("structure.css"),
+    readProjectFile("view.js"),
+    readProjectFile("app.js"),
+  ]);
+
+  assert.match(
+    css,
+    /\.desktop-message__content--single-line\s*\{[\s\S]*?grid-template-columns:\s*auto max-content auto minmax\(0, 1fr\)/,
+  );
+  assert.match(view, /function visualLineCount\(rects\)/);
+  assert.match(view, /range\.getClientRects\(\)/);
+  assert.match(
+    app,
+    /syncDesktopMessageClosingMark\(editor\.closest\("\.desktop-message__content"\)\)/,
+  );
+});
+
 test("相手の入力中と確定後は同じ半透明色越しに紙面を見せる", async () => {
   const css = await readProjectFile("styles.css");
 
