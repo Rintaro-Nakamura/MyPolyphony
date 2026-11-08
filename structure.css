@@ -373,12 +373,12 @@ body {
 .desktop-composer {
   position: relative;
   padding:
-    calc(var(--desktop-message-padding-block) - var(--desktop-composer-frame-width))
-    calc(0.8rem - var(--desktop-composer-frame-width))
+    var(--desktop-message-padding-block)
+    0.8rem
     1rem
-    calc(2.1rem - var(--desktop-composer-frame-width));
+    2.1rem;
   margin-top: var(--desktop-message-gap);
-  border: var(--desktop-composer-frame-width) solid transparent;
+  border: 0;
 }
 
 .desktop-composer[data-role="self"][data-previous-role="self"] {

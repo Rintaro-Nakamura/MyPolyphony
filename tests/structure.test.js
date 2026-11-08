@@ -162,7 +162,7 @@ test("入力中と確定後の文書本文は同じ組版座標を使う", async
   );
   assert.match(
     css,
-    /\.desktop-composer\s*\{[\s\S]*?var\(--desktop-message-padding-block\)[\s\S]*?calc\(2\.1rem - var\(--desktop-composer-frame-width\)\)[\s\S]*?margin-top:\s*var\(--desktop-message-gap\)/,
+    /\.desktop-composer\s*\{[\s\S]*?padding:\s*var\(--desktop-message-padding-block\)\s*0\.8rem\s*1rem\s*2\.1rem[\s\S]*?margin-top:\s*var\(--desktop-message-gap\)[\s\S]*?border:\s*0/,
   );
   assert.match(
     css,
@@ -213,7 +213,7 @@ test("入力枠の左端は話者色の弓形で現在位置を示す", async ()
 
   assert.match(
     css,
-    /\.desktop-composer\s*\{[\s\S]*?--composer-bow-color:\s*var\(--ink\)[\s\S]*?box-shadow:\s*inset 4px 0 0 var\(--composer-bow-color\)/,
+    /\.desktop-composer\s*\{[\s\S]*?--composer-bow-color:\s*var\(--ink\)[\s\S]*?--composer-frame-color:\s*var\(--ink\)[\s\S]*?box-shadow:[\s\S]*?inset 4px 0 0 var\(--composer-bow-color\)/,
   );
   assert.match(
     css,
@@ -221,7 +221,7 @@ test("入力枠の左端は話者色の弓形で現在位置を示す", async ()
   );
   assert.match(
     css,
-    /\.desktop-composer:focus-within\s*\{[\s\S]*?box-shadow:\s*inset 4px 0 0 var\(--composer-bow-color\)/,
+    /\.desktop-composer:focus-within\s*\{[\s\S]*?box-shadow:[\s\S]*?inset 4px 0 0 var\(--composer-bow-color\)/,
   );
 });
 
