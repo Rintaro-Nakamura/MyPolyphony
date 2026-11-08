@@ -17,6 +17,7 @@
         --desktop-self-to-self-gap: 0.8rem;
         --desktop-message-padding-block: 0.8rem;
         --desktop-message-min-height: 3.3rem;
+        --desktop-composer-frame-width: 2px;
       }
 
       *,
@@ -368,7 +369,8 @@
       }
 
       .desktop-message__text {
-        display: inline;
+        display: block;
+        min-width: 0;
       }
 
       .desktop-message__text:empty {
@@ -382,8 +384,17 @@
 
       .desktop-composer {
         position: relative;
-        padding: 1.2rem 1rem 1rem;
-        margin-top: 1.6rem;
+        padding:
+          calc(var(--desktop-message-padding-block) - var(--desktop-composer-frame-width))
+          calc(0.8rem - var(--desktop-composer-frame-width))
+          1rem
+          calc(2.1rem - var(--desktop-composer-frame-width));
+        margin-top: var(--desktop-message-gap);
+        border: var(--desktop-composer-frame-width) solid transparent;
+      }
+
+      .desktop-composer[data-role="self"][data-previous-role="self"] {
+        margin-top: var(--desktop-self-to-self-gap);
       }
 
       .role-tag {
@@ -393,22 +404,24 @@
         padding: 0.15rem 0.62rem;
       }
 
+      .desktop-message__content,
       .quote-input {
         display: grid;
         grid-template-columns: auto minmax(0, 1fr) auto;
         align-items: start;
-        gap: 0.15rem;
+        gap: 0;
       }
 
+      .desktop-message__mark--close,
       .quote-input__mark--close {
         align-self: end;
       }
 
       .quote-input textarea {
         width: 100%;
-        min-height: 2.7rem;
+        min-height: 1lh;
         max-height: 240px;
-        padding: 0.55rem 0.25rem;
+        padding: 0;
         resize: none;
         overflow-y: auto;
       }
@@ -1268,6 +1281,10 @@
         line-height: var(--desktop-content-line-height);
       }
 
+      .desktop-message__mark {
+        color: inherit;
+      }
+
       .message-actions {
         opacity: 0;
         transform: translateY(2px);
@@ -1302,7 +1319,7 @@
       }
 
       .desktop-composer {
-        border: 2px solid var(--ink);
+        border-color: var(--ink);
         border-radius: 0.5rem;
         background: transparent;
         transition: border-color var(--motion-fast),
@@ -1347,19 +1364,17 @@
         background: var(--voice);
       }
 
-      .quote-input__mark {
+      .quote-input {
         font-family: var(--font-dialogue);
-        font-size: 1.65rem;
-        line-height: 1.6;
+        font-size: var(--desktop-content-font-size);
+        line-height: var(--desktop-content-line-height);
       }
 
       .quote-input textarea {
         border: 0;
         outline: 0;
         background: transparent;
-        font-family: var(--font-dialogue);
-        font-size: clamp(1rem, 1.7vw, 1.17rem);
-        line-height: 1.75;
+        font: inherit;
       }
 
       .quote-input textarea::placeholder {
@@ -2672,9 +2687,14 @@
         button.title = `クリックで「次は${alternateLabel}」に切り替え`;
       }
 
-      function renderDesktopComposer({ composer, roleButton }, role) {
+      function renderDesktopComposer({ composer, roleButton }, role, previousRole = null) {
         renderRoleButton(roleButton, role);
         composer.dataset.role = role;
+        if (previousRole === "self" || previousRole === "other") {
+          composer.dataset.previousRole = previousRole;
+        } else {
+          delete composer.dataset.previousRole;
+        }
       }
 
       function renderMobileComposer({ composer, draftInput, roleButton }, role) {
@@ -2703,7 +2723,10 @@
 
         const content = root.createElement("p");
         content.className = "desktop-message__content";
-        content.append(root.createTextNode("「"));
+        const openMark = root.createElement("span");
+        openMark.className = "desktop-message__mark";
+        openMark.setAttribute("aria-hidden", "true");
+        openMark.textContent = "「";
         const text = root.createElement("span");
         text.className = "desktop-message__text";
         text.dataset.messageId = message.id;
@@ -2714,7 +2737,11 @@
         text.setAttribute("aria-label", `${roleLabel(message.role)}の発言本文`);
         text.setAttribute("aria-describedby", "desktopHint");
         text.textContent = message.text;
-        content.append(text, root.createTextNode("」"));
+        const closeMark = root.createElement("span");
+        closeMark.className = "desktop-message__mark desktop-message__mark--close";
+        closeMark.setAttribute("aria-hidden", "true");
+        closeMark.textContent = "」";
+        content.append(openMark, text, closeMark);
 
         article.append(number, content);
         return article;
@@ -4415,6 +4442,7 @@
             roleButton: elements.desktopRoleLabel,
           },
           state.nextRole,
+          state.messages.at(-1)?.role ?? null,
         );
         renderMobileComposer(
           {

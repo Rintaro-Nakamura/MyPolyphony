@@ -5,6 +5,7 @@
   --desktop-self-to-self-gap: 0.8rem;
   --desktop-message-padding-block: 0.8rem;
   --desktop-message-min-height: 3.3rem;
+  --desktop-composer-frame-width: 2px;
 }
 
 *,
@@ -356,7 +357,8 @@ body {
 }
 
 .desktop-message__text {
-  display: inline;
+  display: block;
+  min-width: 0;
 }
 
 .desktop-message__text:empty {
@@ -370,8 +372,17 @@ body {
 
 .desktop-composer {
   position: relative;
-  padding: 1.2rem 1rem 1rem;
-  margin-top: 1.6rem;
+  padding:
+    calc(var(--desktop-message-padding-block) - var(--desktop-composer-frame-width))
+    calc(0.8rem - var(--desktop-composer-frame-width))
+    1rem
+    calc(2.1rem - var(--desktop-composer-frame-width));
+  margin-top: var(--desktop-message-gap);
+  border: var(--desktop-composer-frame-width) solid transparent;
+}
+
+.desktop-composer[data-role="self"][data-previous-role="self"] {
+  margin-top: var(--desktop-self-to-self-gap);
 }
 
 .role-tag {
@@ -381,22 +392,24 @@ body {
   padding: 0.15rem 0.62rem;
 }
 
+.desktop-message__content,
 .quote-input {
   display: grid;
   grid-template-columns: auto minmax(0, 1fr) auto;
   align-items: start;
-  gap: 0.15rem;
+  gap: 0;
 }
 
+.desktop-message__mark--close,
 .quote-input__mark--close {
   align-self: end;
 }
 
 .quote-input textarea {
   width: 100%;
-  min-height: 2.7rem;
+  min-height: 1lh;
   max-height: 240px;
-  padding: 0.55rem 0.25rem;
+  padding: 0;
   resize: none;
   overflow-y: auto;
 }

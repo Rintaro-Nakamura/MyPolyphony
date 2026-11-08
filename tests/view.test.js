@@ -61,9 +61,11 @@ test("文書表示とチャット表示はそれぞれの話者表示を描画�
   renderDesktopComposer(
     { composer: desktopComposer, roleButton: desktopRoleButton },
     "other",
+    "self",
   );
 
   assert.equal(desktopComposer.dataset.role, "other");
+  assert.equal(desktopComposer.dataset.previousRole, "self");
   assert.equal(desktopRoleButton.textContent, "次は 相手");
   assert.match(desktopRoleButton.attributes["aria-label"], /クリックすると自分/);
 
@@ -100,4 +102,8 @@ test("文書の発言本文そのものを編集可能な要素として描画�
   assert.equal(editor.attributes.role, "textbox");
   assert.equal(editor.attributes["aria-describedby"], "desktopHint");
   assert.equal(article.children.length, 2, "編集・削除ボタンは発言に付けない");
+  assert.equal(content.children[0].className, "desktop-message__mark");
+  assert.equal(content.children[0].textContent, "「");
+  assert.equal(content.children[2].className, "desktop-message__mark desktop-message__mark--close");
+  assert.equal(content.children[2].textContent, "」");
 });

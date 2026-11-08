@@ -464,6 +464,10 @@ textarea {
   line-height: var(--desktop-content-line-height);
 }
 
+.desktop-message__mark {
+  color: inherit;
+}
+
 .message-actions {
   opacity: 0;
   transform: translateY(2px);
@@ -498,7 +502,7 @@ textarea {
 }
 
 .desktop-composer {
-  border: 2px solid var(--ink);
+  border-color: var(--ink);
   border-radius: 0.5rem;
   background: transparent;
   transition: border-color var(--motion-fast),
@@ -543,19 +547,17 @@ textarea {
   background: var(--voice);
 }
 
-.quote-input__mark {
+.quote-input {
   font-family: var(--font-dialogue);
-  font-size: 1.65rem;
-  line-height: 1.6;
+  font-size: var(--desktop-content-font-size);
+  line-height: var(--desktop-content-line-height);
 }
 
 .quote-input textarea {
   border: 0;
   outline: 0;
   background: transparent;
-  font-family: var(--font-dialogue);
-  font-size: clamp(1rem, 1.7vw, 1.17rem);
-  line-height: 1.75;
+  font: inherit;
 }
 
 .quote-input textarea::placeholder {

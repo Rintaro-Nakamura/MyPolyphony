@@ -60,9 +60,14 @@ function renderRoleButton(button, role, { compact = false } = {}) {
   button.title = `クリックで「次は${alternateLabel}」に切り替え`;
 }
 
-function renderDesktopComposer({ composer, roleButton }, role) {
+function renderDesktopComposer({ composer, roleButton }, role, previousRole = null) {
   renderRoleButton(roleButton, role);
   composer.dataset.role = role;
+  if (previousRole === "self" || previousRole === "other") {
+    composer.dataset.previousRole = previousRole;
+  } else {
+    delete composer.dataset.previousRole;
+  }
 }
 
 function renderMobileComposer({ composer, draftInput, roleButton }, role) {
@@ -91,7 +96,10 @@ function createDesktopMessage(message, index, root = globalThis.document) {
 
   const content = root.createElement("p");
   content.className = "desktop-message__content";
-  content.append(root.createTextNode("「"));
+  const openMark = root.createElement("span");
+  openMark.className = "desktop-message__mark";
+  openMark.setAttribute("aria-hidden", "true");
+  openMark.textContent = "「";
   const text = root.createElement("span");
   text.className = "desktop-message__text";
   text.dataset.messageId = message.id;
@@ -102,7 +110,11 @@ function createDesktopMessage(message, index, root = globalThis.document) {
   text.setAttribute("aria-label", `${roleLabel(message.role)}の発言本文`);
   text.setAttribute("aria-describedby", "desktopHint");
   text.textContent = message.text;
-  content.append(text, root.createTextNode("」"));
+  const closeMark = root.createElement("span");
+  closeMark.className = "desktop-message__mark desktop-message__mark--close";
+  closeMark.setAttribute("aria-hidden", "true");
+  closeMark.textContent = "」";
+  content.append(openMark, text, closeMark);
 
   article.append(number, content);
   return article;

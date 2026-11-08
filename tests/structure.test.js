@@ -151,6 +151,32 @@ test("構造CSSは装飾CSSを外しても必要な変数を自給する", async
   assert.deepEqual(undefinedVariables, []);
 });
 
+test("入力中と確定後の文書本文は同じ組版座標を使う", async () => {
+  const [css, decoration, app] = await Promise.all([
+    readProjectFile("structure.css"),
+    readProjectFile("styles.css"),
+    readProjectFile("app.js"),
+  ]);
+
+  assert.match(
+    css,
+    /\.desktop-message__content,\s*\.quote-input\s*\{[\s\S]*?grid-template-columns:\s*auto minmax\(0, 1fr\) auto[\s\S]*?gap:\s*0/,
+  );
+  assert.match(
+    css,
+    /\.desktop-composer\s*\{[\s\S]*?var\(--desktop-message-padding-block\)[\s\S]*?calc\(2\.1rem - var\(--desktop-composer-frame-width\)\)[\s\S]*?margin-top:\s*var\(--desktop-message-gap\)/,
+  );
+  assert.match(
+    css,
+    /\.quote-input textarea\s*\{[\s\S]*?min-height:\s*1lh[\s\S]*?padding:\s*0/,
+  );
+  assert.match(
+    decoration,
+    /\.quote-input\s*\{[\s\S]*?font-size:\s*var\(--desktop-content-font-size\)[\s\S]*?line-height:\s*var\(--desktop-content-line-height\)/,
+  );
+  assert.match(app, /state\.messages\.at\(-1\)\?\.role \?\? null/);
+});
+
 test("紙面上の相手の発言は半透明の色越しに紙面を見せる", async () => {
   const css = await readProjectFile("styles.css");
 

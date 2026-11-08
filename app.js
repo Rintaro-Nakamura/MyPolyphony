@@ -506,6 +506,7 @@ function renderComposer() {
       roleButton: elements.desktopRoleLabel,
     },
     state.nextRole,
+    state.messages.at(-1)?.role ?? null,
   );
   renderMobileComposer(
     {
